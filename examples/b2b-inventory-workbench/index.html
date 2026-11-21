@@ -1,0 +1,2292 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="vibe-prd 1.0.0 · https://github.com/gugusiyuan49/vibe-prd">
+<title>PRD Viewer · vibe-prd</title>
+<script>
+  /* Apply the saved or system theme before first paint. */
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('vibe-prd:theme'); } catch (e) {}
+    if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<style>
+/* =========================================================================
+   vibe-prd · 左图右注 PRD viewer (MIT) · zero build, zero framework
+   ========================================================================= */
+:root {
+  --bg: #F8FAFC; --surface: #FFFFFF; --surface-2: #F1F5F9; --line: #E2E8F0; --line-strong: #CBD5E1;
+  --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --grid-dot: #DCE3EC;
+  --primary: #2563EB; --primary-ink: #1D4ED8; --primary-soft: #EFF6FF; --primary-ring: rgba(37, 99, 235, .28);
+  --mark: #E11D48; --mark-soft: rgba(225, 29, 72, .10); --mark-line: rgba(225, 29, 72, .35);
+  --warn: #B45309; --warn-bg: #FFFBEB; --warn-line: #FDE68A; --warn-ink: #78350F;
+  --ok: #047857; --ok-bg: #ECFDF5; --ok-line: #A7F3D0;
+  --shadow-pop: 0 18px 48px -16px rgba(15, 23, 42, .35);
+  --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: #0F172A; --surface: #1E293B; --surface-2: #273449; --line: #334155; --line-strong: #475569;
+  --ink: #F1F5F9; --ink-2: #CBD5E1; --muted: #94A3B8; --grid-dot: #26334A;
+  --primary: #3B82F6; --primary-ink: #60A5FA; --primary-soft: rgba(59, 130, 246, .14); --primary-ring: rgba(96, 165, 250, .35);
+  --mark: #F43F5E; --mark-soft: rgba(244, 63, 94, .14); --mark-line: rgba(244, 63, 94, .45);
+  --warn: #FBBF24; --warn-bg: rgba(245, 158, 11, .10); --warn-line: rgba(245, 158, 11, .35); --warn-ink: #FDE68A;
+  --ok: #34D399; --ok-bg: rgba(16, 185, 129, .12); --ok-line: rgba(16, 185, 129, .35);
+  --shadow-pop: 0 18px 48px -16px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 14px/1.6 var(--font); color: var(--ink); background: var(--bg); overflow: hidden;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+button { font: inherit; color: inherit; }
+code { font-family: var(--mono); font-size: .9em; padding: .1em .35em; border-radius: 4px; background: var(--surface-2); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.print-only { display: none; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.app { display: grid; grid-template-rows: 52px minmax(0, 1fr); height: 100vh; height: 100dvh; }
+
+/* ---------- top bar ---------- */
+.topbar { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0 12px 0 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 8px; height: 28px; padding-right: 14px; border-right: 1px solid var(--line); flex: none; color: var(--ink); text-decoration: none; }
+.brand svg { width: 22px; height: 22px; }
+.wordmark { font-weight: 650; font-size: 14px; letter-spacing: -.01em; }
+.doc-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.doc-title { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.chip-ver { font-family: var(--mono); font-size: 11.5px; }
+.chip-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip-status[data-status="review"] { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.chip-status[data-status="approved"] { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-line); }
+.chip-status[data-status="draft"] { color: var(--muted); }
+.spacer { flex: 1; }
+.issues { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn); font-size: 12.5px; font-weight: 600; cursor: help; }
+.issues[hidden] { display: none; }
+.actions { display: flex; gap: 6px; flex: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, color .15s; }
+.btn:hover { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink); }
+.btn[aria-pressed="true"] { color: var(--mark); background: var(--mark-soft); border-color: var(--mark-line); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-ink); border-color: var(--primary-ink); color: #fff; }
+.seg { display: inline-flex; flex: none; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; min-width: 30px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+.view-seg { display: none; }
+.icon-btn { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+/* ---------- split ---------- */
+.split { display: grid; grid-template-columns: minmax(0, var(--left, 58%)) 9px minmax(0, 1fr); min-height: 0; }
+.stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.browserbar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; flex: none; background: var(--surface); border-bottom: 1px solid var(--line); }
+.lights { display: flex; gap: 6px; padding: 0 4px; flex: none; }
+.lights i { width: 10px; height: 10px; border-radius: 50%; background: #F87171; }
+.lights i:nth-child(2) { background: #FBBF24; }
+.lights i:nth-child(3) { background: #34D399; }
+.address { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 7px; background: var(--surface-2); color: var(--muted); }
+.address svg.i { width: 13px; height: 13px; }
+.address span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: var(--mono); font-size: 12px; }
+.canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; background-color: var(--bg); background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 18px 18px; }
+.device { position: absolute; inset: 0; background: #fff; transform-origin: 0 0; }
+.device[data-device="tablet"], .device[data-device="mobile"] { inset: auto; overflow: hidden; border-radius: 18px; box-shadow: 0 0 0 1px var(--line-strong), 0 24px 48px -20px rgba(15, 23, 42, .35); }
+.device[data-device="mobile"] { border-radius: 30px; }
+.device iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.is-dragging, .is-dragging * { cursor: col-resize !important; user-select: none !important; }
+.is-dragging iframe { pointer-events: none; }
+.splitter { position: relative; background: var(--bg); border-left: 1px solid var(--line); border-right: 1px solid var(--line); cursor: col-resize; touch-action: none; }
+.splitter span { position: absolute; left: 50%; top: 50%; width: 3px; height: 36px; margin: -18px 0 0 -1.5px; border-radius: 3px; background: var(--line-strong); transition: background .15s, height .15s, margin .15s; }
+.splitter:hover span, .splitter:focus-visible span, .is-dragging .splitter span { height: 56px; margin-top: -28px; background: var(--primary); }
+
+/* ---------- document pane ---------- */
+.doc { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); container: doc / inline-size; }
+.tabs { display: flex; gap: 2px; flex: none; padding: 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); font-size: 13.5px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.tab:hover { color: var(--ink); }
+.tab small { font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--primary); }
+.count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--surface-2); color: var(--ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] .count { background: var(--primary-soft); color: var(--primary); }
+.doc-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.panel { padding: 16px 18px 48px; }
+.panel[hidden] { display: none; }
+.empty, .fatal { margin: 24px 0; color: var(--muted); }
+.fatal { padding: 14px 16px; border-radius: 10px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); }
+
+/* overview + jump chips */
+.overview { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+.overview b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.overview .hi b { color: var(--warn); }
+.jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.jump button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 10px 0 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font-size: 12.5px; cursor: pointer; }
+.jump button span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 16em; }
+.jump button:hover, .jump button.is-current { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.num { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--mark); color: #fff; font-size: 11.5px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; border: 0; padding: 0; }
+button.num { cursor: pointer; }
+button.num:hover { box-shadow: 0 0 0 3px var(--mark-soft); }
+
+/* annotation cards */
+.card { position: relative; margin: 0 0 14px; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); scroll-margin: 12px; transition: border-color .2s, box-shadow .25s; }
+.card.is-current { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+.card.is-glow { animation: card-glow 1.5s ease-out; }
+@keyframes card-glow {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .55), 0 0 0 3px var(--primary-ring); }
+  55% { box-shadow: 0 0 0 14px rgba(37, 99, 235, 0), 0 0 0 3px var(--primary-ring); }
+  100% { box-shadow: 0 0 0 3px var(--primary-ring); }
+}
+.card-head { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.card-head .num { width: 24px; height: 24px; font-size: 12.5px; margin-top: 1px; }
+.card-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 15.5px; line-height: 1.45; font-weight: 620; }
+.type { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.card-head .icon-btn { margin: -2px -6px 0 -4px; }
+.card-head .icon-btn:hover { color: var(--primary); background: var(--primary-soft); }
+.card-body { margin-left: 34px; }
+.summary { margin: 6px 0 0; color: var(--ink-2); }
+.card-body > .col { min-width: 0; }
+.orphan { display: none; margin: 8px 0 0; font-size: 12.5px; color: var(--warn); }
+.card.is-orphan .orphan { display: block; }
+.block { margin-top: 14px; }
+.block h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.block h4 small { font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.rules { margin: 0; padding-left: 1.4em; color: var(--ink-2); }
+.rules li { margin: 3px 0; padding-left: 2px; }
+.rules li::marker { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.formula { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 12px; padding: 9px 12px; border-radius: 8px; background: var(--primary-soft); border: 1px solid var(--primary-ring); }
+.formula > span { font-size: 12px; font-weight: 600; color: var(--primary); }
+.formula code { padding: 0; background: none; font-size: 12.5px; color: var(--ink); white-space: pre-wrap; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.t th { padding: 7px 10px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
+.t td { padding: 7px 10px; border-top: 1px solid var(--line); color: var(--ink-2); vertical-align: top; }
+.t td code { font-size: 11.5px; }
+.spec td:first-child { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+.spec td:first-child code { padding: 0; background: none; }
+.guards { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.g { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.g p { margin: 0; color: var(--ink-2); }
+.g .fix { margin-top: 4px; color: var(--ink); }
+.g .fix b { color: var(--warn); font-weight: 600; }
+.lvl { display: inline-grid; place-items: center; height: 20px; padding: 0 7px; border-radius: 5px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.lvl-high { background: var(--warn); color: #fff; }
+[data-theme="dark"] .lvl-high { color: #1E293B; }
+.lvl-medium { background: var(--warn-line); color: var(--warn-ink); }
+.lvl-low { background: var(--surface-2); color: var(--muted); }
+
+/* diagrams */
+.dg { margin: 0 0 16px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.dg-head { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--line); }
+.dg-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
+.kind { flex: none; height: 22px; padding: 0 8px; border-radius: 6px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; background: var(--primary-soft); color: var(--primary); }
+.dg-canvas { min-height: 120px; padding: 18px; overflow: auto; background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 16px 16px; }
+.dg-canvas > div { display: flex; justify-content: center; }
+.dg-canvas svg { max-width: 100%; height: auto; }
+.svg-dark { display: none !important; }
+[data-theme="dark"] .svg-dark { display: flex !important; }
+[data-theme="dark"] .svg-light { display: none !important; }
+.dg-wait, .dg-offline { margin: 0; color: var(--muted); font-size: 12.5px; }
+.dg-error { padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); font-size: 12.5px; }
+.dg-code { position: relative; margin: 0; border-top: 1px solid var(--line); background: var(--surface-2); }
+.dg-code pre { margin: 0; padding: 12px 14px; max-height: 340px; overflow: auto; font: 12px/1.6 var(--mono); color: var(--ink-2); white-space: pre; }
+.dg-code .copy { position: absolute; top: 8px; right: 8px; height: 26px; padding: 0 9px; font-size: 12px; }
+.dg-note { margin: 0; padding: 9px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+
+/* edge cases + tracking */
+.sec-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; font-size: 15px; font-weight: 620; }
+.sec-title small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.sec-title + .tbl-wrap { margin-bottom: 26px; }
+.edge td:nth-child(4), .track td:nth-child(4) { white-space: nowrap; }
+.edge .cat td { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+.edge .cat small { margin-left: 6px; font-weight: 400; color: var(--muted); }
+.edge .cat .count { margin-left: 8px; background: var(--surface); }
+.cat-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; vertical-align: 1px; }
+.cat-empty { background: #64748B; } .cat-boundary { background: #7C3AED; } .cat-network { background: #0284C7; }
+.cat-concurrency { background: #D97706; } .cat-permission { background: #059669; } .cat-other { background: var(--line-strong); }
+.edge .miss td { color: var(--warn); font-size: 12px; }
+.track td:first-child { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+.track td:nth-child(3) { font-family: var(--mono); font-size: 11.5px; }
+.refs { display: inline-flex; gap: 4px; }
+.refs .num { width: 18px; height: 18px; font-size: 10.5px; }
+
+/* lightbox + toast */
+.lightbox { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: rgba(15, 23, 42, .55); }
+.lightbox[hidden] { display: none; }
+.lb { display: flex; flex-direction: column; width: min(1200px, 100%); height: min(88vh, 940px); border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow-pop); }
+.lb-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.lb-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
+.lb-zoom { min-width: 46px; text-align: center; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.lb-body { flex: 1; min-height: 0; overflow: auto; padding: 28px; background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 18px 18px; }
+.lb-body svg { display: block; margin: 0 auto; max-width: none !important; height: auto; }
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 50; max-width: min(520px, calc(100vw - 32px)); padding: 9px 14px; border-radius: 9px; background: var(--ink); color: var(--surface); font-size: 13px; box-shadow: var(--shadow-pop); opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity .2s, transform .2s; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* narrow document pane */
+@container doc (max-width: 720px) {
+  .tab small { display: none; }
+}
+@container doc (max-width: 560px) {
+  .card-body { margin-left: 0; }
+  .panel { padding: 14px 14px 40px; }
+}
+
+/* phones & small tablets: one pane at a time */
+@media (max-width: 900px) {
+  .topbar { gap: 8px; padding: 0 8px 0 10px; }
+  .brand { padding-right: 10px; }
+  .wordmark, .chip-ver, .actions .btn span, .lights, .device-seg, #btn-open { display: none; }
+  .actions .btn { width: 34px; padding: 0; justify-content: center; }
+  .view-seg { display: inline-flex; }
+  .split { display: block; position: relative; }
+  .stage, .doc { position: absolute; inset: 0; }
+  .splitter { display: none; }
+  .app[data-view="proto"] .doc, .app[data-view="doc"] .stage { visibility: hidden; pointer-events: none; }
+}
+@media (max-width: 520px) {
+  .chip-status, #btn-print, .issues { display: none; }
+  .doc-title { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* print: A4 landscape, every panel expanded */
+@page { size: A4 landscape; margin: 9mm 10mm; }
+@media print {
+  :root, [data-theme="dark"] {
+    --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F1F5F9; --line: #D5DDE7; --line-strong: #CBD5E1;
+    --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --grid-dot: #FFFFFF;
+    --primary: #2563EB; --primary-soft: #EFF6FF; --primary-ring: rgba(37, 99, 235, .28);
+    --mark: #E11D48; --warn: #B45309; --warn-bg: #FFFBEB; --warn-line: #FDE68A; --warn-ink: #78350F;
+    color-scheme: light;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  .app { display: block; height: auto; }
+  .topbar { height: auto; padding: 0 0 8px; margin-bottom: 8px; border-bottom: 2px solid #0F172A; }
+  .actions, .view-seg, .issues, .splitter, .tabs, .jump, .card-head .icon-btn, .dg-head .icon-btn, .browserbar .icon-btn, .device-seg, .toast, .lightbox { display: none !important; }
+  .print-only { display: block !important; }
+  .print-meta { margin: 0 0 8px; color: #64748B; font-size: 11px; }
+  .split { display: block; }
+  .stage { height: 160mm; border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden; break-after: page; }
+  .device { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; transform: none !important; border-radius: 0 !important; box-shadow: none !important; }
+  .doc { display: block; }
+  .doc-body { overflow: visible !important; }
+  .panel { display: block !important; padding: 0 0 6mm !important; }
+  .panel + .panel { break-before: page; }
+  .panel > h2.print-only { margin: 0 0 4mm; font-size: 17px; }
+  .panel > h2 small { font-size: 12px; font-weight: 400; color: #64748B; }
+  .card { margin: 0 0 5mm !important; break-inside: auto; border-color: #CBD5E1 !important; box-shadow: none !important; animation: none !important; }
+  .card-body { margin-left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 7mm; align-items: start; }
+  .card-body > .summary, .card-body > .orphan, .card-body > .block { grid-column: 1 / -1; }
+  .guards { grid-template-columns: 1fr 1fr; }
+  .card-head, .block h4 { break-after: avoid; }
+  .g, tr, .formula, .rules li { break-inside: avoid; }
+  #panel-arch { display: grid !important; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; }
+  #panel-arch > h2 { grid-column: 1 / -1; }
+  .dg { margin: 0 !important; break-inside: avoid; }
+  .dg-canvas { background: none; padding: 8px; }
+  .dg-canvas svg { max-height: 150mm; width: auto; }
+  .svg-dark { display: none !important; }
+  .svg-light { display: flex !important; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<!--
+  vibe-prd · left-right-prd.html — 左图右注 interactive PRD viewer (MIT)
+  To fill it (agents: SKILL.md, Mode B, step B6):
+    1. Paste the prototype HTML, with data-prd-badge="N" on each region, between the PROTOTYPE markers.
+    2. Put window.VIBE_PRD = { ... } between the DATA markers.
+  Everything else is the viewer. Leave it as it is.
+-->
+<div class="app" id="app" data-view="proto">
+  <header class="topbar">
+    <a class="brand" href="https://github.com/gugusiyuan49/vibe-prd" target="_blank" rel="noopener" title="Made with vibe-prd">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1.8" y="3.2" width="20.4" height="17.6" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <rect x="4" y="5.6" width="8.4" height="12.8" rx="1.8" fill="#2563EB"/>
+        <path d="M15 9h4.6M15 12.2h4.6M15 15.4h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="12.4" cy="5.6" r="2.7" fill="#E11D48" stroke="#fff" stroke-width="1.2"/>
+      </svg>
+      <span class="wordmark">vibe-prd</span>
+    </a>
+    <div class="doc-meta">
+      <h1 class="doc-title" id="doc-title">PRD</h1>
+      <span class="chip chip-ver" id="doc-version">v1.0.0</span>
+      <span class="chip chip-status" id="doc-status" data-status="review"></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="seg view-seg" id="view-seg">
+      <button type="button" data-view="proto" aria-pressed="true" data-i18n="viewProto"></button>
+      <button type="button" data-view="doc" aria-pressed="false" data-i18n="viewDoc"></button>
+    </div>
+    <span class="issues" id="issues" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></svg><span>0</span></span>
+    <div class="actions">
+      <button type="button" class="btn" id="btn-badges" aria-pressed="true" data-icon="target" data-i18n-title="badgesTip"><span data-i18n="badges"></span></button>
+      <button type="button" class="btn" id="btn-theme" data-icon="contrast" data-i18n-title="themeTip"><span data-i18n="theme"></span></button>
+      <button type="button" class="btn btn-primary" id="btn-print" data-icon="printer" data-i18n-title="printTip"><span data-i18n="print"></span></button>
+    </div>
+  </header>
+  <p class="print-only print-meta" id="print-meta"></p>
+
+  <main class="split" id="split">
+    <section class="stage" aria-label="Prototype">
+      <div class="browserbar">
+        <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <button type="button" class="icon-btn" id="btn-reload" data-icon="reload" data-i18n-title="reload"></button>
+        <div class="address"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span id="addr">prototype.html</span></div>
+        <div class="seg device-seg" id="device-seg">
+          <button type="button" data-device="desktop" data-icon="monitor" data-i18n-title="desktop"></button>
+          <button type="button" data-device="tablet" data-icon="tablet" data-i18n-title="tablet"></button>
+          <button type="button" data-device="mobile" data-icon="phone" data-i18n-title="mobile"></button>
+        </div>
+        <button type="button" class="icon-btn" id="btn-open" data-icon="external" data-i18n-title="openNew"></button>
+      </div>
+      <div class="canvas" id="canvas">
+        <div class="device" id="device" data-device="desktop">
+          <iframe id="proto-frame" title="Prototype"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-valuemin="30" aria-valuemax="75" aria-valuenow="58" data-i18n-title="splitter"><span></span></div>
+
+    <section class="doc" aria-label="PRD">
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab" role="tab" id="tab-notes" data-tab="notes" aria-controls="panel-notes" aria-selected="true"></button>
+        <button type="button" class="tab" role="tab" id="tab-arch" data-tab="arch" aria-controls="panel-arch" aria-selected="false" tabindex="-1"></button>
+        <button type="button" class="tab" role="tab" id="tab-edge" data-tab="edge" aria-controls="panel-edge" aria-selected="false" tabindex="-1"></button>
+      </nav>
+      <div class="doc-body" id="doc-body">
+        <section class="panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes"></section>
+        <section class="panel" id="panel-arch" role="tabpanel" aria-labelledby="tab-arch" hidden></section>
+        <section class="panel" id="panel-edge" role="tabpanel" aria-labelledby="tab-edge" hidden></section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lb" role="dialog" aria-modal="true" aria-labelledby="lb-title">
+    <div class="lb-head">
+      <h3 id="lb-title"></h3>
+      <button type="button" class="icon-btn" data-zoom="-1" data-icon="minus"></button>
+      <span class="lb-zoom" id="lb-zoom">100%</span>
+      <button type="button" class="icon-btn" data-zoom="1" data-icon="plus"></button>
+      <button type="button" class="icon-btn" id="lb-close" data-icon="close" data-i18n-title="close"></button>
+    </div>
+    <div class="lb-body" id="lb-body"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<template id="vibe-prd-prototype">
+<!-- VIBE-PRD:PROTOTYPE:BEGIN -->
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>库存总览与金蝶 ERP 对账 · 供应链中台</title>
+<style>
+:root {
+  --primary: #165DFF; --primary-hover: #4080FF; --primary-1: #E8F3FF; --primary-2: #BEDAFF;
+  --success: #00B42A; --success-ink: #009A29; --success-1: #E8FFEA;
+  --warning: #FF7D00; --warning-ink: #D25F00; --warning-1: #FFF7E8;
+  --danger: #F53F3F; --danger-ink: #CB272D; --danger-1: #FFECE8;
+  --ink: #1D2129; --ink-2: #4E5969; --muted: #86909C; --line: #E5E6EB; --line-2: #F2F3F5;
+  --bg: #F2F3F5; --radius: 8px;
+  --font: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", "Segoe UI", Roboto, sans-serif;
+  --mono: "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { font: 14px/1.5715 var(--font); color: var(--ink); background: var(--bg); -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+svg.ic { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+
+/* shell */
+.layout { display: flex; min-height: 100vh; }
+.sider { position: sticky; top: 0; display: flex; flex-direction: column; width: 216px; height: 100vh; flex: none; background: #fff; border-right: 1px solid var(--line); z-index: 30; }
+.logo { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 18px; border-bottom: 1px solid var(--line-2); font-size: 15px; font-weight: 600; }
+.logo i { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 7px; background: linear-gradient(135deg, #165DFF, #0FC6C2); color: #fff; font-style: normal; font-size: 13px; font-weight: 700; }
+.menu { flex: 1; padding: 8px; overflow: auto; }
+.menu .group { margin: 14px 12px 6px; font-size: 12px; color: var(--muted); }
+.menu a { display: flex; align-items: center; gap: 10px; height: 38px; padding: 0 12px; border-radius: 6px; color: var(--ink-2); text-decoration: none; }
+.menu a:hover { background: var(--line-2); }
+.menu a.active { background: var(--primary-1); color: var(--primary); font-weight: 500; }
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.header { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; background: rgba(255, 255, 255, .94); backdrop-filter: blur(8px); border-bottom: 1px solid var(--line); }
+.burger { display: none; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; cursor: pointer; }
+.burger:hover { background: var(--line-2); }
+.crumb { font-size: 13px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.crumb b { color: var(--ink); font-weight: 500; }
+.header .right { display: flex; align-items: center; gap: 16px; margin-left: auto; color: var(--ink-2); }
+.user { display: flex; align-items: center; gap: 8px; font-size: 13px; white-space: nowrap; }
+.avatar { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #FFE4BA; color: #D25F00; font-size: 13px; font-weight: 600; }
+.content { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 1480px; padding: 20px 24px 48px; }
+
+/* page head + io actions */
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.page-head h1 { margin: 0; font-size: 20px; font-weight: 600; }
+.page-head p { margin: 4px 0 0; font-size: 13px; color: var(--muted); }
+.page-head p code { font-family: var(--mono); font-size: 12px; color: var(--ink-2); }
+.page-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.btn-row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.sync-line { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+.dot.busy { background: var(--primary); animation: blink 1s infinite; }
+
+/* buttons + inputs */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 15px; border: 1px solid var(--line); border-radius: 6px; background: #fff; color: var(--ink); white-space: nowrap; cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
+.btn:hover:not(:disabled) { color: var(--primary); border-color: var(--primary-2); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); border-color: var(--primary-hover); color: #fff; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn-sm { height: 28px; padding: 0 12px; font-size: 13px; }
+.btn-text { height: 24px; padding: 0 6px; border: 0; background: transparent; color: var(--primary); cursor: pointer; border-radius: 4px; font-size: 13px; white-space: nowrap; }
+.btn-text:hover { background: var(--primary-1); }
+.btn-text.danger { color: var(--danger); }
+.btn-text.danger:hover { background: var(--danger-1); }
+.spin { animation: spin .9s linear infinite; }
+.input, .select { width: 100%; height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 6px; background: #fff; outline: none; transition: border-color .15s, box-shadow .15s; }
+.input:focus, .select:focus { border-color: var(--primary); box-shadow: 0 0 0 2px var(--primary-1); }
+.select { appearance: none; padding-right: 28px; background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2386909C' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; }
+textarea.input { height: 76px; padding: 7px 10px; resize: vertical; }
+input[type=checkbox] { width: 15px; height: 15px; margin: 0; accent-color: var(--primary); cursor: pointer; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+.card-pad { padding: 16px 20px; }
+
+/* ① filters + NL2SQL */
+.filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)) auto; gap: 12px 16px; align-items: end; }
+.field label { display: block; margin-bottom: 6px; font-size: 13px; color: var(--ink-2); }
+.filter-btns { display: flex; gap: 8px; }
+.ai-row { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.ai-box { display: flex; align-items: center; gap: 10px; height: 40px; padding: 0 4px 0 12px; border: 1px solid transparent; border-radius: 8px; background: linear-gradient(#fff, #fff) padding-box, linear-gradient(90deg, #165DFF, #722ED1, #0FC6C2) border-box; }
+.ai-tag { display: inline-flex; align-items: center; gap: 4px; color: #722ED1; font-size: 13px; font-weight: 600; white-space: nowrap; }
+.ai-box input { flex: 1; min-width: 0; height: 36px; border: 0; outline: 0; background: transparent; }
+.ai-tips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--muted); }
+.chip { height: 24px; padding: 0 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--line-2); color: var(--ink-2); font-size: 12px; cursor: pointer; }
+.chip:hover { color: var(--primary); border-color: var(--primary-2); background: var(--primary-1); }
+.ai-result { display: none; margin-top: 10px; padding: 10px 12px; border-radius: 8px; background: #F5F0FF; border: 1px solid #E3D4FF; font-size: 13px; }
+.ai-result.show { display: block; }
+.ai-result.err { background: var(--danger-1); border-color: #FDCDC5; color: var(--danger-ink); }
+.conds { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.cond { padding: 0 8px; border: 1px solid #D9C5FF; border-radius: 4px; background: #fff; color: #551DB0; font-size: 12px; line-height: 22px; }
+.conds .grow { flex: 1; }
+.sql { display: none; margin: 8px 0 0; padding: 10px 12px; border-radius: 6px; background: #1D2129; color: #E5E6EB; font: 12px/1.65 var(--mono); white-space: pre; overflow: auto; }
+.sql.show { display: block; }
+
+/* ② KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.kpi { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 16px 18px; background: #fff; border: 1px solid var(--line); border-radius: var(--radius); }
+.kpi-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.kpi-label svg { color: var(--muted); }
+.kpi-value { font-size: 26px; font-weight: 600; line-height: 1.3; letter-spacing: -.01em; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kpi-value small { margin-left: 2px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.kpi-foot { display: flex; align-items: center; gap: 8px; min-width: 0; font-size: 12px; color: var(--muted); white-space: nowrap; }
+.kpi-foot span:last-child { overflow: hidden; text-overflow: ellipsis; }
+.delta { display: inline-flex; align-items: center; gap: 2px; font-weight: 500; }
+.delta.bad { color: var(--danger-ink); }
+.delta.good { color: var(--success-ink); }
+.delta.flat { color: var(--ink-2); }
+
+/* ④ transfer entry + drawer */
+.quick { display: flex; align-items: center; gap: 16px; padding: 14px 20px; border: 1px solid var(--line); border-radius: var(--radius); background: linear-gradient(90deg, #EEF4FF, #fff 55%); }
+.quick-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: none; border-radius: 10px; background: var(--primary-1); color: var(--primary); }
+.quick-icon svg { width: 20px; height: 20px; }
+.quick h3 { margin: 0; font-size: 15px; font-weight: 600; }
+.quick p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
+.quick .stats { display: flex; gap: 16px; margin-left: auto; font-size: 13px; color: var(--ink-2); white-space: nowrap; }
+.quick .stats b { font-variant-numeric: tabular-nums; }
+.mask { position: fixed; inset: 0; z-index: 50; background: rgba(29, 33, 41, .45); opacity: 0; visibility: hidden; transition: opacity .25s, visibility .25s; }
+.mask.open { opacity: 1; visibility: visible; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; z-index: 51; display: flex; flex-direction: column; width: 460px; max-width: 100%; background: #fff; box-shadow: -8px 0 24px rgba(0, 0, 0, .08); transform: translateX(100%); visibility: hidden; transition: transform .28s cubic-bezier(.2, .8, .2, 1), visibility .28s; }
+.drawer.open { transform: none; visibility: visible; }
+.drawer-head { display: flex; align-items: center; gap: 10px; height: 56px; padding: 0 16px 0 20px; border-bottom: 1px solid var(--line); }
+.drawer-head h3 { flex: 1; margin: 0; font-size: 16px; font-weight: 600; }
+.icon-btn { display: grid; place-items: center; width: 30px; height: 30px; border: 0; border-radius: 6px; background: transparent; color: var(--ink-2); cursor: pointer; }
+.icon-btn:hover { background: var(--line-2); }
+.drawer-body { flex: 1; overflow: auto; padding: 20px; }
+.form-item { margin-bottom: 18px; }
+.form-item > label { display: block; margin-bottom: 6px; font-size: 13.5px; color: var(--ink-2); }
+.req { margin-right: 3px; color: var(--danger); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.err { display: none; margin-top: 4px; font-size: 12px; color: var(--danger); }
+.has-err .err { display: block; }
+.has-err .input, .has-err .select { border-color: var(--danger); }
+.hint { margin-top: 4px; font-size: 12px; color: var(--muted); }
+.radio-group { display: flex; gap: 8px; }
+.radio-card { display: flex; flex: 1; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 13.5px; cursor: pointer; }
+.radio-card:has(input:checked) { border-color: var(--primary); background: var(--primary-1); color: var(--primary); }
+.radio-card input { margin: 0; accent-color: var(--primary); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: 8px; background: var(--line-2); font-size: 13.5px; }
+.switch-row small { display: block; color: var(--muted); font-size: 12px; }
+.switch { position: relative; width: 40px; height: 22px; flex: none; }
+.switch input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 11px; background: #C9CDD4; transition: background .2s; pointer-events: none; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.switch input:checked + span { background: var(--primary); }
+.switch input:checked + span::after { transform: translateX(18px); }
+.vehicle { display: none; margin-top: 14px; }
+.vehicle.show { display: block; }
+.counter { float: right; font-size: 12px; color: var(--muted); }
+.drawer-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 20px; border-top: 1px solid var(--line); }
+
+/* ③ reconciliation table */
+.table-card .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 14px 20px; }
+.table-card h2 { margin: 0; font-size: 16px; font-weight: 600; }
+.seg { display: inline-flex; max-width: 100%; padding: 3px; border-radius: 6px; background: var(--line-2); overflow-x: auto; }
+.seg button { height: 26px; padding: 0 12px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-2); font-size: 13px; white-space: nowrap; cursor: pointer; }
+.seg button.on { background: #fff; color: var(--primary); font-weight: 500; box-shadow: 0 1px 2px rgba(0, 0, 0, .06); }
+.seg .n { margin-left: 4px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bar .right { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.tbl-wrap { overflow-x: auto; border-top: 1px solid var(--line); }
+table { width: 100%; min-width: 1000px; border-collapse: separate; border-spacing: 0; }
+th, td { padding: 12px; border-bottom: 1px solid var(--line-2); background: #fff; font-size: 13.5px; text-align: left; vertical-align: middle; }
+th { background: #F7F8FA; color: var(--ink-2); font-size: 13px; font-weight: 500; white-space: nowrap; }
+th.r, td.r { text-align: right; }
+tbody tr:hover td { background: #F7F9FC; }
+.col-check { position: sticky; left: 0; z-index: 2; width: 44px; }
+.col-sku { position: sticky; left: 44px; z-index: 2; min-width: 250px; box-shadow: inset -1px 0 0 var(--line-2); }
+th.col-check, th.col-sku { z-index: 3; }
+.sku-name { font-weight: 500; }
+.sku-name .spec { margin-left: 4px; font-size: 12.5px; font-weight: 400; color: var(--muted); }
+.sku-code { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.sku-meta { display: flex; flex-wrap: wrap; gap: 4px 6px; margin-top: 4px; }
+.tag { display: inline-flex; align-items: center; height: 20px; padding: 0 6px; border-radius: 4px; background: var(--line-2); color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+.tag.blue { background: var(--primary-1); color: var(--primary); }
+.tag.cyan { background: #E8FFFB; color: #0DA5AA; }
+.tag.orange { background: var(--warning-1); color: var(--warning-ink); }
+.tag.red { background: var(--danger-1); color: var(--danger-ink); }
+.diff { display: inline-flex; align-items: center; justify-content: flex-end; min-width: 58px; height: 24px; padding: 0 9px; border-radius: 12px; font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.diff.neg { background: var(--danger-1); color: var(--danger-ink); }
+.diff.pos { background: var(--warning-1); color: var(--warning-ink); }
+.diff.zero { background: var(--success-1); color: var(--success-ink); font-weight: 500; }
+.status { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.st-pending { color: var(--primary); }
+.st-checking { color: var(--warning-ink); }
+.st-settled { color: var(--success-ink); }
+.st-suspended { color: var(--danger-ink); }
+.ops { display: flex; gap: 2px; }
+.sort { cursor: pointer; user-select: none; }
+.sort::after { content: "↕"; margin-left: 4px; font-size: 11px; color: var(--muted); }
+.sort.asc::after { content: "↑"; color: var(--primary); }
+.sort.desc::after { content: "↓"; color: var(--primary); }
+.empty-row td { padding: 40px 0; text-align: center; color: var(--muted); }
+.pager { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 12px 20px; font-size: 13px; color: var(--ink-2); }
+.pager button { min-width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: #fff; cursor: pointer; }
+.pager button.on { border-color: var(--primary); color: var(--primary); }
+.pager button:disabled { opacity: .4; cursor: not-allowed; }
+
+/* toasts */
+.toasts { position: fixed; top: 16px; left: 50%; z-index: 80; display: flex; flex-direction: column; align-items: center; gap: 8px; transform: translateX(-50%); pointer-events: none; }
+.toast { display: flex; align-items: center; gap: 8px; max-width: 92vw; padding: 9px 16px; border-radius: 6px; background: #fff; box-shadow: 0 4px 16px rgba(0, 0, 0, .12); animation: drop .25s ease; }
+.toast.ok svg { color: var(--success); }
+.toast.info svg { color: var(--primary); }
+.toast.bad svg { color: var(--danger); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes blink { 50% { opacity: .3; } }
+@keyframes drop { from { opacity: 0; transform: translateY(-8px); } }
+
+@media (max-width: 1180px) {
+  .sider { position: fixed; left: 0; top: 0; bottom: 0; transform: translateX(-100%); transition: transform .25s; box-shadow: 8px 0 24px rgba(0, 0, 0, .08); }
+  .sider.show { transform: none; }
+  .burger { display: grid; }
+}
+@media (max-width: 1100px) {
+  .filters { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .filter-btns { grid-column: 1 / -1; justify-content: flex-end; }
+}
+@media (max-width: 760px) {
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .quick { flex-wrap: wrap; }
+  .quick .stats { order: 3; width: 100%; margin-left: 56px; }
+}
+@media (max-width: 640px) {
+  .header { padding: 0 12px; }
+  .user .name, .crumb .hide-sm { display: none; }
+  .content { gap: 12px; padding: 12px 12px 32px; }
+  .page-head { flex-direction: column; align-items: stretch; }
+  .page-actions { align-items: stretch; }
+  .btn-row { justify-content: flex-start; }
+  .card-pad { padding: 14px; }
+  .filters { grid-template-columns: 1fr; }
+  .kpi { padding: 12px 14px; }
+  .kpi-value { font-size: 20px; }
+  .quick { padding: 14px; }
+  .quick .stats { margin-left: 0; }
+  .quick .btn-row { width: 100%; }
+  .quick .btn-row .btn { flex: 1; }
+  .table-card .bar { padding: 14px; }
+  table, thead, tbody, tr, td { display: block; min-width: 0; }
+  thead { display: none; }
+  .tbl-wrap { border-top: 0; }
+  tbody tr { margin: 0 12px 12px; padding: 6px 0; border: 1px solid var(--line); border-radius: 8px; }
+  td { position: static; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 12px; border: 0; box-shadow: none !important; text-align: right; }
+  td::before { content: attr(data-label); color: var(--muted); font-size: 12.5px; text-align: left; }
+  td.col-sku { display: block; text-align: left; }
+  td.col-sku::before, td.col-check { display: none; }
+  .form-row { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24"><path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+  <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4h6v3H9zM9 12h6M9 16h4"/></symbol>
+  <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3 6h11v9H3zM14 9h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="2"/><circle cx="17.5" cy="17.5" r="2"/></symbol>
+  <symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5.5 5h13L21 13v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-6z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M21 3 10 14"/><path d="M21 3 14.5 21l-4.5-7-7-4.5z"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="14" rx="2"/><path d="M3 10h18M16 15h2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 8 2.5 8h-17S6 15 6 9"/><path d="M10 20.5h4"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 15V3.5m0 0L7.5 8m4.5-4.5L16.5 8"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5V15m0 0-4.5-4.5M12 15l4.5-4.5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></symbol>
+  <symbol id="i-sync" viewBox="0 0 24 24"><path d="M20 11a8 8 0 0 0-14.6-4.5M4 3.5v4h4"/><path d="M4 13a8 8 0 0 0 14.6 4.5M20 20.5v-4h-4"/></symbol>
+  <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3l1.9 6.1L20 11l-6.1 1.9L12 19l-1.9-6.1L4 11l6.1-1.9z"/><path d="M19 3v4M17 5h4"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 7h13l-4-4M17 17H4l4 4"/></symbol>
+  <symbol id="i-coin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 7.5 3 4 3-4M8.5 12h7M8.5 15h7M12 11.5V18"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></symbol>
+  <symbol id="i-scale" viewBox="0 0 24 24"><path d="M12 3v18M7 21h10M5 7h14M5 7l-3 6a3 3 0 0 0 6 0zM19 7l-3 6a3 3 0 0 0 6 0z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 3 3 5-6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8v.2"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M12 19V5m0 0-5 5m5-5 5 5"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M12 5v14m0 0-5-5m5 5 5-5"/></symbol>
+</svg>
+
+<div class="layout">
+  <aside class="sider" id="sider">
+    <div class="logo"><i>链</i>供应链中台</div>
+    <nav class="menu">
+      <a href="#"><svg class="ic"><use href="#i-home"/></svg>工作台</a>
+      <div class="group">库存管理</div>
+      <a href="#" class="active"><svg class="ic"><use href="#i-box"/></svg>库存总览与对账</a>
+      <a href="#"><svg class="ic"><use href="#i-clock"/></svg>批次与效期</a>
+      <a href="#"><svg class="ic"><use href="#i-clip"/></svg>盘点任务</a>
+      <div class="group">业务单据</div>
+      <a href="#"><svg class="ic"><use href="#i-truck"/></svg>调拨与运输</a>
+      <a href="#"><svg class="ic"><use href="#i-inbox"/></svg>采购入库</a>
+      <a href="#"><svg class="ic"><use href="#i-send"/></svg>销售出库</a>
+      <a href="#"><svg class="ic"><use href="#i-wallet"/></svg>财务结算</a>
+      <div class="group">系统</div>
+      <a href="#"><svg class="ic"><use href="#i-gear"/></svg>集成设置</a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <header class="header">
+      <button class="burger" id="burger" type="button" aria-label="菜单"><svg class="ic"><use href="#i-menu"/></svg></button>
+      <div class="crumb"><span class="hide-sm">供应链中台 / 库存管理 / </span><b>库存总览与对账</b></div>
+      <div class="right">
+        <svg class="ic"><use href="#i-search"/></svg>
+        <svg class="ic"><use href="#i-bell"/></svg>
+        <div class="user"><span class="avatar">林</span><span class="name">林晓 · 华东仓管</span></div>
+      </div>
+    </header>
+
+    <main class="content">
+      <div class="page-head">
+        <div>
+          <h1>库存总览与金蝶 ERP 对账</h1>
+          <p>账实差异 <code>= WMS 可用库存 + 在途锁定 − 金蝶即时库存</code></p>
+        </div>
+        <div class="page-actions" id="io-actions" data-prd-badge="5">
+          <div class="btn-row">
+            <button class="btn" id="btn-import" type="button"><svg class="ic"><use href="#i-upload"/></svg>批量导入</button>
+            <button class="btn" id="btn-export" type="button"><svg class="ic"><use href="#i-download"/></svg>导出 Excel</button>
+            <button class="btn btn-primary" id="btn-sync" type="button"><svg class="ic"><use href="#i-sync"/></svg><span>同步金蝶 ERP</span></button>
+          </div>
+          <div class="sync-line"><span class="dot" id="sync-dot"></span><span id="sync-text">金蝶云·星空 已连接</span></div>
+          <input type="file" id="import-file" accept=".xlsx,.xls,.csv" hidden>
+        </div>
+      </div>
+
+      <section class="card card-pad" id="filter-bar" data-prd-badge="1">
+        <div class="filters">
+          <div class="field"><label for="f-wh">仓库</label>
+            <select class="select" id="f-wh">
+              <option value="all">全部仓库</option>
+              <option value="WH-SH01">华东冷链仓</option>
+              <option value="WH-GZ02">华南中心仓</option>
+              <option value="WH-CD03">西南前置仓</option>
+            </select></div>
+          <div class="field"><label for="f-kw">SKU 编码 / 名称</label><input class="input" id="f-kw" placeholder="如 SKU-CL-10021 或 虾仁"></div>
+          <div class="field"><label for="f-status">对账状态</label>
+            <select class="select" id="f-status">
+              <option value="all">全部状态</option>
+              <option value="pending">待对账</option>
+              <option value="checking">差异核查中</option>
+              <option value="settled">已平账</option>
+              <option value="suspended">异常挂起</option>
+            </select></div>
+          <div class="field"><label for="f-temp">温层</label>
+            <select class="select" id="f-temp">
+              <option value="all">全部温层</option>
+              <option value="冷冻">冷冻</option>
+              <option value="冷藏">冷藏</option>
+              <option value="常温">常温</option>
+            </select></div>
+          <div class="filter-btns">
+            <button class="btn" id="btn-reset" type="button">重置</button>
+            <button class="btn btn-primary" id="btn-query" type="button">查询</button>
+          </div>
+        </div>
+        <div class="ai-row">
+          <div class="ai-box">
+            <span class="ai-tag"><svg class="ic"><use href="#i-spark"/></svg>AI 查库存</span>
+            <input id="ai-input" placeholder="用一句话描述，例如：华东冷链仓里差异超过 50 件的临期商品">
+            <button class="btn btn-primary btn-sm" id="ai-go" type="button">生成查询</button>
+          </div>
+          <div class="ai-tips">试试：
+            <button class="chip" type="button">华东冷链仓差异超过 50 件</button>
+            <button class="chip" type="button">30 天内到期的商品</button>
+            <button class="chip" type="button">低于安全库存的 SKU</button>
+            <button class="chip" type="button">盘亏且待对账的商品</button>
+          </div>
+          <div class="ai-result" id="ai-result"></div>
+        </div>
+      </section>
+
+      <section class="kpis" id="kpi-cards" data-prd-badge="2"></section>
+
+      <section class="quick" id="transfer-entry" data-prd-badge="4">
+        <span class="quick-icon"><svg class="ic"><use href="#i-truck"/></svg></span>
+        <div>
+          <h3>多仓调拨与用车申请</h3>
+          <p>华东 ⇄ 华南冷链干线每天 16:00 截单，次日发车</p>
+        </div>
+        <div class="stats"><span>待审批 <b id="q-pending">3</b> 单</span><span>在途 <b>5</b> 单</span></div>
+        <div class="btn-row">
+          <button class="btn" id="btn-vehicle" type="button"><svg class="ic"><use href="#i-truck"/></svg>用车申请</button>
+          <button class="btn btn-primary" id="btn-transfer" type="button"><svg class="ic"><use href="#i-swap"/></svg>发起调拨</button>
+        </div>
+      </section>
+
+      <section class="card table-card" id="recon-table" data-prd-badge="3">
+        <div class="bar">
+          <h2>库存明细与账实对账</h2>
+          <div class="seg" id="tabs"></div>
+          <div class="right">
+            <button class="btn btn-sm" id="btn-batch" type="button" disabled>批量平账</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th class="col-check"><input type="checkbox" id="check-all" aria-label="全选本页"></th>
+              <th class="col-sku">商品 SKU / 批次</th>
+              <th class="r">WMS 可用</th>
+              <th class="r">在途锁定</th>
+              <th class="r">金蝶即时库存</th>
+              <th class="r sort" id="sort-diff">账实差异</th>
+              <th>库存预警</th>
+              <th>对账状态</th>
+              <th>操作</th>
+            </tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+        <div class="pager" id="pager"></div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<div class="mask" id="mask"></div>
+<aside class="drawer" id="transfer-drawer" aria-labelledby="drawer-title">
+  <div class="drawer-head">
+    <h3 id="drawer-title">发起调拨申请</h3>
+    <button class="icon-btn" id="drawer-close" type="button" aria-label="关闭"><svg class="ic"><use href="#i-x"/></svg></button>
+  </div>
+  <form class="drawer-body" id="transfer-form" data-prd-badge="4" novalidate>
+    <div class="form-item">
+      <label>调拨类型</label>
+      <div class="radio-group">
+        <label class="radio-card"><input type="radio" name="kind" value="normal" checked>常规调拨</label>
+        <label class="radio-card"><input type="radio" name="kind" value="urgent">紧急补货</label>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-item" data-f="from"><label for="t-from"><span class="req">*</span>调出仓</label>
+        <select class="select" id="t-from"><option value="">请选择</option><option value="WH-SH01">华东冷链仓</option><option value="WH-GZ02">华南中心仓</option><option value="WH-CD03">西南前置仓</option></select>
+        <div class="err"></div></div>
+      <div class="form-item" data-f="to"><label for="t-to"><span class="req">*</span>调入仓</label>
+        <select class="select" id="t-to"><option value="">请选择</option><option value="WH-SH01">华东冷链仓</option><option value="WH-GZ02">华南中心仓</option><option value="WH-CD03">西南前置仓</option></select>
+        <div class="err"></div></div>
+    </div>
+    <div class="form-item" data-f="sku"><label for="t-sku"><span class="req">*</span>调拨商品</label>
+      <select class="select" id="t-sku"></select>
+      <div class="err"></div></div>
+    <div class="form-row">
+      <div class="form-item" data-f="qty"><label for="t-qty"><span class="req">*</span>调拨数量（件）</label>
+        <input class="input" id="t-qty" type="number" placeholder="请输入">
+        <div class="hint" id="t-avail"></div>
+        <div class="err"></div></div>
+      <div class="form-item" data-f="date"><label for="t-date"><span class="req">*</span>期望到货日期</label>
+        <input class="input" id="t-date" type="date">
+        <div class="err"></div></div>
+    </div>
+    <div class="form-item">
+      <div class="switch-row">
+        <div>需要用车<small>勾选后由调度统一派车，冷链商品请选冷藏车型</small></div>
+        <label class="switch"><input type="checkbox" id="t-need-car"><span></span></label>
+      </div>
+      <div class="vehicle" id="vehicle">
+        <div class="form-row">
+          <div class="form-item" data-f="car"><label for="t-car"><span class="req">*</span>车型</label>
+            <select class="select" id="t-car"><option value="">请选择</option><option>4.2 米冷藏车</option><option>7.6 米冷藏车</option><option>9.6 米厢式货车</option></select>
+            <div class="err"></div></div>
+          <div class="form-item"><label for="t-load">装车时间</label><input class="input" id="t-load" type="time" value="16:00"></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-item"><label for="t-note">备注 <span class="counter" id="t-count">0 / 200</span></label>
+      <textarea class="input" id="t-note" maxlength="200" placeholder="选填，如：门店促销备货"></textarea></div>
+  </form>
+  <div class="drawer-foot">
+    <button class="btn" id="drawer-cancel" type="button">取消</button>
+    <button class="btn btn-primary" id="drawer-submit" type="button">提交申请</button>
+  </div>
+</aside>
+<div class="toasts" id="toasts"></div>
+
+<script>
+(function () {
+  var WH = { 'WH-SH01': '华东冷链仓', 'WH-GZ02': '华南中心仓', 'WH-CD03': '西南前置仓' };
+  var STATUS = { pending: '待对账', checking: '差异核查中', settled: '已平账', suspended: '异常挂起' };
+  var WARN = [{ t: '正常', c: '' }, { t: '关注', c: 'blue' }, { t: '预警', c: 'orange' }, { t: '告警', c: 'red' }];
+  var PAGE_SIZE = 10;
+
+  // mock data · in a real app this comes from GET /api/inventory/recon
+  var rows = [
+    { sku: 'SKU-CL-10021', name: '冷冻虾仁', spec: '500g/袋', temp: '冷冻', wh: 'WH-SH01', batch: 'B2410-18', expiry: 182, cost: 38.5, wms: 12400, locked: 1600, erp: 14012, safety: 6000, status: 'pending' },
+    { sku: 'SKU-CL-10388', name: '巴氏鲜牛奶', spec: '950ml/盒', temp: '冷藏', wh: 'WH-SH01', batch: 'B2411-19', expiry: 6, cost: 12.8, wms: 28600, locked: 0, erp: 28600, safety: 8000, status: 'settled' },
+    { sku: 'SKU-CL-10415', name: '原味酸奶', spec: '200g×8', temp: '冷藏', wh: 'WH-SH01', batch: 'B2411-12', expiry: 18, cost: 26.9, wms: 4200, locked: 400, erp: 4656, safety: 5000, status: 'checking' },
+    { sku: 'SKU-CL-10502', name: '速冻手工水饺', spec: '1kg/袋', temp: '冷冻', wh: 'WH-SH01', batch: 'B2410-30', expiry: 240, cost: 22, wms: 31000, locked: 2000, erp: 33000, safety: 10000, status: 'settled' },
+    { sku: 'SKU-CL-10633', name: '冷鲜鸡胸肉', spec: '1kg/盒', temp: '冷藏', wh: 'WH-SH01', batch: 'B2411-17', expiry: 9, cost: 18.6, wms: 1800, locked: 0, erp: 1800, safety: 4000, status: 'settled' },
+    { sku: 'SKU-DR-20017', name: '每日坚果礼盒', spec: '30袋/盒', temp: '常温', wh: 'WH-GZ02', batch: 'B2409-05', expiry: 210, cost: 89, wms: 8600, locked: 1200, erp: 9788, safety: 3000, status: 'pending' },
+    { sku: 'SKU-DR-20108', name: '天然矿泉水', spec: '550ml×24', temp: '常温', wh: 'WH-GZ02', batch: 'B2411-02', expiry: 330, cost: 28.8, wms: 54000, locked: 6000, erp: 60000, safety: 20000, status: 'settled' },
+    { sku: 'SKU-DR-20256', name: '挂耳咖啡', spec: '10g×20', temp: '常温', wh: 'WH-GZ02', batch: 'B2408-21', expiry: 25, cost: 45, wms: 960, locked: 0, erp: 1032, safety: 1500, status: 'suspended' },
+    { sku: 'SKU-DR-20311', name: '三层抽纸', spec: '120抽×24', temp: '常温', wh: 'WH-GZ02', batch: 'B2410-11', expiry: 720, cost: 42.5, wms: 19800, locked: 0, erp: 19800, safety: 6000, status: 'settled' },
+    { sku: 'SKU-DR-20479', name: '浓缩洗衣液', spec: '2kg/瓶', temp: '常温', wh: 'WH-GZ02', batch: 'B2407-09', expiry: 600, cost: 33.9, wms: 0, locked: 0, erp: 24, safety: 2000, status: 'pending' },
+    { sku: 'SKU-SW-30044', name: '牛油火锅底料', spec: '500g/袋', temp: '常温', wh: 'WH-CD03', batch: 'B2410-25', expiry: 300, cost: 19.9, wms: 23400, locked: 3000, erp: 26340, safety: 8000, status: 'checking' },
+    { sku: 'SKU-SW-30120', name: '自热米饭', spec: '280g/盒', temp: '常温', wh: 'WH-CD03', batch: 'B2409-14', expiry: 160, cost: 15.5, wms: 11200, locked: 800, erp: 12000, safety: 4000, status: 'settled' },
+    { sku: 'SKU-SW-30205', name: '冷冻麻辣小龙虾', spec: '750g/盒', temp: '冷冻', wh: 'WH-CD03', batch: 'B2411-08', expiry: 28, cost: 56, wms: 3100, locked: 0, erp: 3155, safety: 3000, status: 'pending' },
+    { sku: 'SKU-SW-30288', name: '手撕牛肉干', spec: '200g/袋', temp: '常温', wh: 'WH-CD03', batch: 'B2410-01', expiry: 190, cost: 36, wms: 6400, locked: 0, erp: 6400, safety: 2000, status: 'settled' }
+  ];
+
+  var state = { wh: 'all', kw: '', status: 'all', temp: 'all', tab: 'all', ai: null, sort: null, page: 1, selected: {}, transfers: 3, syncing: false, synced: 0, lastSync: null };
+  var seq = { transfer: 3, loss: 6 };
+  var $ = function (id) { return document.getElementById(id); };
+  var fmt = function (n) { return Number(n).toLocaleString('zh-CN'); };
+  var diff = function (r) { return r.wms + r.locked - r.erp; };
+  var find = function (sku) { return rows.filter(function (r) { return r.sku === sku; })[0]; };
+  var pad = function (n) { return String(n).padStart(2, '0'); };
+  var hms = function (d) { return pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds()); };
+  var ymd = function (d, sep) { sep = sep || ''; return d.getFullYear() + sep + pad(d.getMonth() + 1) + sep + pad(d.getDate()); };
+  var icon = function (n) { return '<svg class="ic"><use href="#i-' + n + '"/></svg>'; };
+  state.lastSync = hms(new Date(Date.now() - 7 * 60 * 1000));
+
+  function warnLevel(r) {
+    if (r.wms <= 0 || r.wms <= r.safety * 0.5) return 3;
+    if (r.wms <= r.safety) return 2;
+    if (r.wms <= r.safety * 1.2) return 1;
+    return 0;
+  }
+  function isAlert(r) { return warnLevel(r) >= 2 || r.expiry <= 30; }
+
+  function toast(text, type) {
+    var el = document.createElement('div');
+    el.className = 'toast ' + (type || 'ok');
+    el.innerHTML = icon(type === 'bad' ? 'alert' : type === 'info' ? 'info' : 'check') + '<span></span>';
+    el.lastChild.textContent = text;
+    $('toasts').appendChild(el);
+    setTimeout(function () { el.remove(); }, 3200);
+  }
+
+  /* ---------- filtering ---------- */
+  function scoped() { return rows.filter(function (r) { return state.wh === 'all' || r.wh === state.wh; }); }
+  function base() {
+    return scoped().filter(function (r) {
+      if (state.kw && r.sku.toLowerCase().indexOf(state.kw.toLowerCase()) < 0 && r.name.indexOf(state.kw) < 0) return false;
+      if (state.status !== 'all' && r.status !== state.status) return false;
+      if (state.temp !== 'all' && r.temp !== state.temp) return false;
+      if (state.ai && !state.ai.test(r)) return false;
+      return true;
+    });
+  }
+  var TABS = [
+    { k: 'all', t: '全部', f: function () { return true; } },
+    { k: 'diff', t: '有差异', f: function (r) { return diff(r) !== 0; } },
+    { k: 'warn', t: '预警/临期', f: isAlert },
+    { k: 'settled', t: '已平账', f: function (r) { return r.status === 'settled'; } }
+  ];
+  function visibleRows() {
+    var tab = TABS.filter(function (t) { return t.k === state.tab; })[0];
+    var list = base().filter(tab.f);
+    if (state.sort) list.sort(function (a, b) { return (Math.abs(diff(a)) - Math.abs(diff(b))) * (state.sort === 'asc' ? 1 : -1); });
+    return list;
+  }
+
+  /* ---------- ② KPI ---------- */
+  function renderKpis() {
+    var list = scoped(), all = state.wh === 'all';
+    var value = list.reduce(function (s, r) { return s + (r.wms + r.locked) * r.cost; }, 0);
+    var alerts = list.filter(isAlert);
+    var lowStock = list.filter(function (r) { return warnLevel(r) >= 2; }).length;
+    var nearExpiry = list.filter(function (r) { return r.expiry <= 30; }).length;
+    var diffs = list.filter(function (r) { return diff(r) !== 0; });
+    var diffMoney = diffs.reduce(function (s, r) { return s + Math.abs(diff(r)) * r.cost; }, 0);
+    var tiles = [
+      { icon: 'coin', label: '在库总货值', value: '¥' + (value / 10000).toFixed(1) + '<small>万</small>', delta: all ? '<span class="delta flat">' + icon('up') + '2.3%</span><span>较昨日</span>' : '<span>WMS 可用 + 在途锁定，按加权成本</span>' },
+      { icon: 'alert', label: '临期/低库存预警', value: alerts.length + '<small>/ ' + list.length + ' SKU</small>', delta: (all ? '<span class="delta bad">' + icon('up') + '2</span>' : '') + '<span>低库存 ' + lowStock + ' · 临期 ' + nearExpiry + '</span>' },
+      { icon: 'scale', label: '今日金蝶差异单', value: diffs.length + '<small>单</small>', delta: (all ? '<span class="delta good">' + icon('down') + '3</span>' : '') + '<span>涉及 ¥' + fmt(Math.round(diffMoney)) + '</span>' },
+      { icon: 'swap', label: '待处理调拨申请', value: state.transfers + '<small>单</small>', delta: '<span>其中紧急补货 1 单</span>' }
+    ];
+    $('kpi-cards').innerHTML = tiles.map(function (t) {
+      return '<div class="kpi"><div class="kpi-label">' + icon(t.icon) + t.label + '</div><div class="kpi-value">' + t.value + '</div><div class="kpi-foot">' + t.delta + '</div></div>';
+    }).join('');
+    $('q-pending').textContent = state.transfers;
+  }
+
+  /* ---------- ③ table ---------- */
+  function rowHTML(r) {
+    var d = diff(r), lv = warnLevel(r);
+    var dTxt = d === 0 ? '0' : (d > 0 ? '+' : '−') + fmt(Math.abs(d));
+    var exp = r.expiry <= 7 ? '<span class="tag red">严重临期 ' + r.expiry + ' 天</span>' : r.expiry <= 30 ? '<span class="tag orange">临期 ' + r.expiry + ' 天</span>' : '';
+    var warn = r.wms <= 0 ? '<span class="tag red">缺货</span>' : '<span class="tag ' + WARN[lv].c + '">' + WARN[lv].t + '</span>';
+    var canSettle = d !== 0 && r.status !== 'settled';
+    var canLoss = d < 0 && (r.status === 'pending' || r.status === 'suspended');
+    var ops = (canSettle ? '<button class="btn-text" data-act="settle" data-sku="' + r.sku + '">一键平账</button>' : '') +
+      (canLoss ? '<button class="btn-text danger" data-act="loss" data-sku="' + r.sku + '">生成盘亏单</button>' : '');
+    return '<tr>' +
+      '<td class="col-check"><input type="checkbox" data-check="' + r.sku + '"' + (state.selected[r.sku] ? ' checked' : '') + ' aria-label="选择 ' + r.sku + '"></td>' +
+      '<td class="col-sku"><div class="sku-name">' + r.name + '<span class="spec">' + r.spec + '</span></div><div class="sku-code">' + r.sku + ' · ' + r.batch + '</div>' +
+      '<div class="sku-meta"><span class="tag ' + (r.temp === '冷冻' ? 'blue' : r.temp === '冷藏' ? 'cyan' : '') + '">' + r.temp + '</span><span class="tag">' + WH[r.wh] + '</span>' + exp + '</div></td>' +
+      '<td class="r num" data-label="WMS 可用">' + fmt(r.wms) + '</td>' +
+      '<td class="r num" data-label="在途锁定">' + fmt(r.locked) + '</td>' +
+      '<td class="r num" data-label="金蝶即时库存">' + fmt(r.erp) + '</td>' +
+      '<td class="r" data-label="账实差异"><span class="diff ' + (d < 0 ? 'neg' : d > 0 ? 'pos' : 'zero') + '">' + dTxt + '</span></td>' +
+      '<td data-label="库存预警">' + warn + '</td>' +
+      '<td data-label="对账状态"><span class="status st-' + r.status + '">' + STATUS[r.status] + '</span></td>' +
+      '<td data-label="操作"><div class="ops">' + (ops || '<span class="muted">—</span>') + '</div></td></tr>';
+  }
+  function renderTable() {
+    var b = base();
+    $('tabs').innerHTML = TABS.map(function (t) {
+      return '<button type="button" data-tab="' + t.k + '" class="' + (state.tab === t.k ? 'on' : '') + '">' + t.t + '<span class="n">' + b.filter(t.f).length + '</span></button>';
+    }).join('');
+    var list = visibleRows();
+    var pages = Math.max(1, Math.ceil(list.length / PAGE_SIZE));
+    if (state.page > pages) state.page = pages;
+    var pageRows = list.slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+    $('rows').innerHTML = pageRows.length ? pageRows.map(rowHTML).join('') : '<tr class="empty-row"><td colspan="9">暂无数据</td></tr>';
+    var nums = '';
+    for (var i = 1; i <= pages; i++) nums += '<button type="button" data-page="' + i + '" class="' + (i === state.page ? 'on' : '') + '">' + i + '</button>';
+    $('pager').innerHTML = '<span>共 ' + list.length + ' 条</span><button type="button" data-page="' + (state.page - 1) + '"' + (state.page <= 1 ? ' disabled' : '') + '>‹</button>' + nums +
+      '<button type="button" data-page="' + (state.page + 1) + '"' + (state.page >= pages ? ' disabled' : '') + '>›</button>';
+    var picked = Object.keys(state.selected).filter(function (k) { return state.selected[k]; }).length;
+    $('btn-batch').disabled = !picked;
+    $('btn-batch').textContent = picked ? '批量平账（' + picked + '）' : '批量平账';
+    $('sort-diff').className = 'r sort' + (state.sort ? ' ' + state.sort : '');
+    $('check-all').checked = pageRows.length > 0 && pageRows.every(function (r) { return state.selected[r.sku]; });
+  }
+  function render() { renderKpis(); renderTable(); renderSync(); }
+
+  function settle(skus) {
+    var done = [];
+    skus.forEach(function (sku) {
+      var r = find(sku);
+      if (!r || diff(r) === 0 || r.status === 'settled') return;
+      done.push({ r: r, d: diff(r) });
+      r.erp = r.wms + r.locked;   // write the WMS figure back as the book quantity
+      r.status = 'settled';
+      delete state.selected[sku];
+    });
+    render();
+    if (done.length === 1) toast('已平账：' + done[0].r.sku + ' 差异 ' + (done[0].d > 0 ? '+' : '−') + fmt(Math.abs(done[0].d)) + ' 已调整为 0');
+    else if (done.length) toast('已批量平账 ' + done.length + ' 个 SKU');
+    else toast('选中的商品没有需要平账的差异', 'info');
+  }
+  function lossOrder(sku) {
+    var r = find(sku);
+    r.status = 'checking';
+    seq.loss += 1;
+    render();
+    toast('已生成盘亏单 PK' + ymd(new Date()) + '-' + String(seq.loss).padStart(3, '0') + '，待财务审核');
+  }
+
+  /* ---------- ① NL2SQL (rule-based demo of the LLM call) ---------- */
+  function parseQuery(q) {
+    var s = q.replace(/\s+/g, ''), conds = [], where = [], tests = [], m;
+    var wh = /华东|冷链仓|上海/.test(s) ? 'WH-SH01' : /华南|广州/.test(s) ? 'WH-GZ02' : /西南|成都/.test(s) ? 'WH-CD03' : null;
+    if (wh) { conds.push(WH[wh]); where.push("warehouse_id = '" + wh + "'"); tests.push(function (r) { return r.wh === wh; }); }
+    if ((m = s.match(/差异(?:超过|大于|多于|>)(\d+)/))) {
+      var n = Number(m[1]);
+      conds.push('|差异| > ' + n); where.push('ABS(wms_available + in_transit_locked - erp_qty) > ' + n);
+      tests.push(function (r) { return Math.abs(diff(r)) > n; });
+    } else if (/盘亏|负差异/.test(s)) {
+      conds.push('差异 < 0'); where.push('wms_available + in_transit_locked - erp_qty < 0'); tests.push(function (r) { return diff(r) < 0; });
+    } else if (/盘盈|正差异/.test(s)) {
+      conds.push('差异 > 0'); where.push('wms_available + in_transit_locked - erp_qty > 0'); tests.push(function (r) { return diff(r) > 0; });
+    } else if (/有差异|差异/.test(s)) {
+      conds.push('差异 ≠ 0'); where.push('wms_available + in_transit_locked - erp_qty <> 0'); tests.push(function (r) { return diff(r) !== 0; });
+    }
+    if ((m = s.match(/(\d+)天内(?:过期|到期)?/))) {
+      var days = Number(m[1]);
+      conds.push('剩余效期 ≤ ' + days + ' 天'); where.push('expiry_days <= ' + days); tests.push(function (r) { return r.expiry <= days; });
+    } else if (/临期|快过期|即将过期|快到期/.test(s)) {
+      conds.push('剩余效期 ≤ 30 天'); where.push('expiry_days <= 30'); tests.push(function (r) { return r.expiry <= 30; });
+    }
+    if (/低于安全库存|库存不足|缺货/.test(s)) { conds.push('可用 ≤ 安全库存'); where.push('wms_available <= safety_stock'); tests.push(function (r) { return r.wms <= r.safety; }); }
+    ['冷冻', '冷藏', '常温'].forEach(function (t) { if (s.indexOf(t + '商品') >= 0 || s.indexOf(t + '品') >= 0) { conds.push('温层 = ' + t); where.push("temp_zone = '" + t + "'"); tests.push(function (r) { return r.temp === t; }); } });
+    Object.keys(STATUS).forEach(function (k) { if (s.indexOf(STATUS[k]) >= 0) { conds.push('状态 = ' + STATUS[k]); where.push("recon_status = '" + k.toUpperCase() + "'"); tests.push(function (r) { return r.status === k; }); } });
+    if (!tests.length) return null;
+    return {
+      conds: conds,
+      sql: 'SELECT sku_code, sku_name, warehouse_id,\n       wms_available, in_transit_locked, erp_qty,\n       wms_available + in_transit_locked - erp_qty AS diff_qty\nFROM   v_inventory_recon\nWHERE  ' + where.join('\n  AND  ') + '\nORDER  BY ABS(diff_qty) DESC\nLIMIT  200;',
+      test: function (r) { return tests.every(function (t) { return t(r); }); }
+    };
+  }
+  function runAi() {
+    var q = $('ai-input').value.trim();
+    if (!q) return;
+    var btn = $('ai-go');
+    btn.textContent = '生成中…';
+    setTimeout(function () {
+      btn.textContent = '生成查询';
+      var res = parseQuery(q), box = $('ai-result');
+      if (!res) {
+        state.ai = null;
+        box.className = 'ai-result show err';
+        box.textContent = '没理解这句话。可以提到仓库、差异件数、效期天数或对账状态，例如：华东冷链仓差异超过 50 件。';
+      } else {
+        state.ai = res; state.page = 1;
+        box.className = 'ai-result show';
+        box.innerHTML = '<div class="conds"><b>AI 已生成查询条件：</b>' + res.conds.map(function (c) { return '<span class="cond">' + c + '</span>'; }).join('') +
+          '<span class="grow"></span><button class="btn-text" type="button" id="ai-sql">查看 SQL</button><button class="btn-text" type="button" id="ai-clear">清除</button></div><pre class="sql" id="sql"></pre>';
+        $('sql').textContent = res.sql;
+      }
+      render();
+    }, 650);
+  }
+
+  /* ---------- ⑤ import / export / ERP sync ---------- */
+  function renderSync() {
+    var btn = $('btn-sync');
+    btn.disabled = state.syncing;
+    btn.innerHTML = state.syncing ? '<svg class="ic spin"><use href="#i-sync"/></svg><span>同步中…</span>' : icon('sync') + '<span>同步金蝶 ERP</span>';
+    $('sync-dot').className = 'dot' + (state.syncing ? ' busy' : '');
+    $('sync-text').textContent = state.syncing ? '正在拉取金蝶即时库存（STK_Inventory）…' : '金蝶云·星空 已连接 · 上次同步 ' + state.lastSync;
+  }
+  function syncErp() {
+    state.syncing = true;
+    renderSync();
+    setTimeout(function () {
+      var matched = 0, added = 0;
+      if (state.synced === 0) {
+        var a = find('SKU-CL-10021');
+        if (a && diff(a) !== 0) { a.erp = a.wms + a.locked; a.status = 'settled'; matched++; }
+        var b = find('SKU-CL-10502');
+        if (b) { b.erp += 18; b.status = 'pending'; added++; }
+      }
+      state.synced += 1;
+      state.syncing = false;
+      state.lastSync = hms(new Date());
+      render();
+      toast('金蝶同步完成：拉取 ' + rows.length + ' 条，自动平账 ' + matched + ' 条，新增差异 ' + added + ' 条');
+    }, 2200);
+  }
+  function exportCsv() {
+    var list = visibleRows();
+    var head = ['SKU', '商品名称', '规格', '仓库', '批次', '剩余效期(天)', 'WMS可用', '在途锁定', '金蝶即时库存', '账实差异', '对账状态'];
+    var lines = [head].concat(list.map(function (r) { return [r.sku, r.name, r.spec, WH[r.wh], r.batch, r.expiry, r.wms, r.locked, r.erp, diff(r), STATUS[r.status]]; }));
+    var csv = '﻿' + lines.map(function (l) { return l.map(function (v) { return '"' + String(v).replace(/"/g, '""') + '"'; }).join(','); }).join('\r\n');
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = '库存对账_' + ymd(new Date()) + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    toast('已导出 ' + list.length + ' 行');
+  }
+
+  /* ---------- ④ transfer drawer ---------- */
+  function fillSkus() {
+    var from = $('t-from').value, list = rows.filter(function (r) { return r.wh === from; });
+    $('t-sku').innerHTML = '<option value="">' + (from ? '请选择' : '请先选择调出仓') + '</option>' + list.map(function (r) {
+      return '<option value="' + r.sku + '">' + r.name + ' ' + r.spec + '（' + r.sku + '）</option>';
+    }).join('');
+    showAvail();
+  }
+  function showAvail() {
+    var r = find($('t-sku').value);
+    $('t-avail').textContent = r ? '调出仓可用 ' + fmt(r.wms) + ' 件' : '';
+  }
+  function openDrawer(withCar) {
+    $('drawer-title').textContent = withCar ? '用车申请' : '发起调拨申请';
+    $('t-from').value = state.wh !== 'all' ? state.wh : 'WH-SH01';
+    $('t-to').value = $('t-from').value === 'WH-GZ02' ? 'WH-SH01' : 'WH-GZ02';
+    fillSkus();
+    var tomorrow = new Date(Date.now() + 86400000);
+    $('t-date').value = ymd(tomorrow, '-');
+    $('t-date').min = ymd(tomorrow, '-');
+    $('t-need-car').checked = !!withCar;
+    $('vehicle').classList.toggle('show', !!withCar);
+    document.querySelectorAll('.form-item.has-err').forEach(function (el) { el.classList.remove('has-err'); });
+    $('mask').classList.add('open');
+    $('transfer-drawer').classList.add('open');
+  }
+  function closeDrawer() {
+    $('mask').classList.remove('open');
+    $('transfer-drawer').classList.remove('open');
+  }
+  function setErr(field, msg) {
+    var item = document.querySelector('[data-f="' + field + '"]');
+    item.classList.toggle('has-err', !!msg);
+    item.querySelector('.err').textContent = msg || '';
+    return !msg;
+  }
+  function submitTransfer() {
+    var from = $('t-from').value, to = $('t-to').value, sku = $('t-sku').value, r = find(sku);
+    var qtyRaw = $('t-qty').value, qty = Number(qtyRaw), date = $('t-date').value, needCar = $('t-need-car').checked;
+    var ok = [
+      setErr('from', from ? '' : '请选择调出仓'),
+      setErr('to', !to ? '请选择调入仓' : to === from ? '调出仓与调入仓不能相同' : ''),
+      setErr('sku', sku ? '' : '请选择调拨商品'),
+      setErr('qty', !qtyRaw ? '请输入调拨数量' : !(Number.isInteger(qty) && qty > 0) ? '数量需为正整数' : r && qty > r.wms ? '超出调出仓可用库存（可用 ' + fmt(r.wms) + ' 件）' : ''),
+      setErr('date', !date ? '请选择期望到货日期' : date < $('t-date').min ? '到货日期不能早于明天' : ''),
+      setErr('car', needCar && !$('t-car').value ? '请选择车型' : '')
+    ].every(Boolean);
+    if (!ok) return;
+    var btn = $('drawer-submit');
+    btn.textContent = '提交中…';
+    setTimeout(function () {
+      btn.textContent = '提交申请';
+      r.wms -= qty;             // lock the quantity at the source warehouse
+      r.locked += qty;
+      state.transfers += 1;
+      seq.transfer += 1;
+      closeDrawer();
+      $('t-qty').value = ''; $('t-note').value = ''; $('t-count').textContent = '0 / 200';
+      render();
+      toast('调拨单 TR' + ymd(new Date()) + '-' + String(seq.transfer).padStart(4, '0') + ' 已提交，等待主管审批');
+    }, 800);
+  }
+
+  /* ---------- events ---------- */
+  $('f-wh').addEventListener('change', function () { state.wh = this.value; state.page = 1; render(); });
+  $('f-status').addEventListener('change', function () { state.status = this.value; state.page = 1; render(); });
+  $('f-temp').addEventListener('change', function () { state.temp = this.value; state.page = 1; render(); });
+  $('f-kw').addEventListener('keydown', function (e) { if (e.key === 'Enter') { state.kw = this.value.trim(); state.page = 1; render(); } });
+  $('btn-query').addEventListener('click', function () { state.kw = $('f-kw').value.trim(); state.page = 1; render(); });
+  $('btn-reset').addEventListener('click', function () {
+    ['f-wh', 'f-status', 'f-temp'].forEach(function (id) { $(id).value = 'all'; });
+    $('f-kw').value = ''; $('ai-input').value = ''; $('ai-result').className = 'ai-result';
+    state.wh = 'all'; state.kw = ''; state.status = 'all'; state.temp = 'all'; state.ai = null; state.tab = 'all'; state.sort = null; state.page = 1;
+    render();
+  });
+  $('ai-go').addEventListener('click', runAi);
+  $('ai-input').addEventListener('keydown', function (e) { if (e.key === 'Enter') runAi(); });
+  document.querySelectorAll('.ai-tips .chip').forEach(function (c) {
+    c.addEventListener('click', function () { $('ai-input').value = c.textContent; runAi(); });
+  });
+  $('ai-result').addEventListener('click', function (e) {
+    if (e.target.id === 'ai-sql') { var pre = $('sql'); pre.classList.toggle('show'); e.target.textContent = pre.classList.contains('show') ? '收起 SQL' : '查看 SQL'; }
+    if (e.target.id === 'ai-clear') { state.ai = null; $('ai-input').value = ''; $('ai-result').className = 'ai-result'; render(); }
+  });
+  $('tabs').addEventListener('click', function (e) { var b = e.target.closest('[data-tab]'); if (b) { state.tab = b.dataset.tab; state.page = 1; render(); } });
+  $('pager').addEventListener('click', function (e) { var b = e.target.closest('[data-page]'); if (b && !b.disabled) { state.page = Number(b.dataset.page); render(); } });
+  $('sort-diff').addEventListener('click', function () { state.sort = state.sort === 'desc' ? 'asc' : state.sort === 'asc' ? null : 'desc'; render(); });
+  $('rows').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-act]');
+    if (!b) return;
+    if (b.dataset.act === 'settle') settle([b.dataset.sku]);
+    if (b.dataset.act === 'loss') lossOrder(b.dataset.sku);
+  });
+  $('rows').addEventListener('change', function (e) {
+    if (e.target.dataset.check) { state.selected[e.target.dataset.check] = e.target.checked; renderTable(); }
+  });
+  $('check-all').addEventListener('change', function () {
+    var on = this.checked, list = visibleRows().slice((state.page - 1) * PAGE_SIZE, state.page * PAGE_SIZE);
+    list.forEach(function (r) { state.selected[r.sku] = on; });
+    renderTable();
+  });
+  $('btn-batch').addEventListener('click', function () {
+    settle(Object.keys(state.selected).filter(function (k) { return state.selected[k]; }));
+  });
+  $('btn-sync').addEventListener('click', syncErp);
+  $('btn-export').addEventListener('click', exportCsv);
+  $('btn-import').addEventListener('click', function () { $('import-file').click(); });
+  $('import-file').addEventListener('change', function () {
+    var f = this.files[0];
+    if (!f) return;
+    toast('正在解析 ' + f.name + '…', 'info');
+    this.value = '';
+    setTimeout(function () { toast('导入完成：成功 126 行，失败 3 行（SKU 不存在）'); }, 1200);
+  });
+  $('btn-transfer').addEventListener('click', function () { openDrawer(false); });
+  $('btn-vehicle').addEventListener('click', function () { openDrawer(true); });
+  $('drawer-close').addEventListener('click', closeDrawer);
+  $('drawer-cancel').addEventListener('click', closeDrawer);
+  $('mask').addEventListener('click', closeDrawer);
+  $('drawer-submit').addEventListener('click', submitTransfer);
+  $('t-from').addEventListener('change', fillSkus);
+  $('t-sku').addEventListener('change', showAvail);
+  $('t-need-car').addEventListener('change', function () { $('vehicle').classList.toggle('show', this.checked); });
+  $('t-note').addEventListener('input', function () { $('t-count').textContent = this.value.length + ' / 200'; });
+  $('burger').addEventListener('click', function () { $('sider').classList.toggle('show'); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { closeDrawer(); $('sider').classList.remove('show'); } });
+
+  render();
+})();
+</script>
+</body>
+</html>
+<!-- VIBE-PRD:PROTOTYPE:END -->
+</template>
+
+<script id="vibe-prd-data">
+/* VIBE-PRD:DATA:BEGIN */
+window.VIBE_PRD = {
+  meta: {
+    title: "库存总览与金蝶 ERP 对账工作台",
+    lang: "zh",
+    version: "v1.2.0",
+    status: "review",
+    updated: "2026-11-21",
+    source: "raw-prototype.html",
+    url: "scm.example.com/inventory/reconciliation"
+  },
+
+  annotations: [
+    {
+      id: 1,
+      title: "多维筛选与 NL2SQL 自然语言查询栏",
+      type: "Filter Bar",
+      summary: "让仓管和财务用下拉筛选或一句话，快速圈出要处理的仓库、SKU 和差异范围。",
+      rules: [
+        "仓库、对账状态、温层下拉 `change` 后立即生效；SKU 输入框需要 **回车** 或点击 **查询** 才生效。",
+        "所有条件取交集（AND），并与 AI 条件叠加；任何条件变化都把页码重置为 1。",
+        "**AI 查库存**：输入一句话后点击「生成查询」或回车，约 650 ms 返回结构化条件标签和可展开的只读 SQL（`parseQuery()`）。",
+        "AI 可识别：仓库（华东/华南/西南）、「差异超过 N」、盘亏/盘盈、「N 天内到期」与「临期」（≤ 30 天）、低于安全库存、对账状态、温层。",
+        "无法识别时在输入框下方提示改写示例，**不改变** 现有筛选结果。",
+        "**重置** 清空手动条件、AI 条件、页签和排序；点击示例标签等于输入该句并执行。"
+      ],
+      fields: [
+        { name: "warehouse_id", type: "enum：`WH-SH01` 华东冷链仓 / `WH-GZ02` 华南中心仓 / `WH-CD03` 西南前置仓", source: "GET /api/warehouses，按用户数据权限过滤（推断）", required: "选填，默认全部仓库" },
+        { name: "keyword", type: "string，≤ 64 字符", source: "模糊匹配 `sku_code`（不区分大小写）或 `sku_name`", required: "选填" },
+        { name: "recon_status", type: "enum：PENDING 待对账 / CHECKING 差异核查中 / SETTLED 已平账 / SUSPENDED 异常挂起", source: "对账状态字典", required: "选填，默认全部" },
+        { name: "temp_zone", type: "enum：冷冻 / 冷藏 / 常温", source: "SKU 主数据", required: "选填，默认全部" },
+        { name: "nl_query", type: "string，当前无长度上限", source: "用户输入，发送至 NL2SQL 服务", required: "选填" },
+        { name: "generated_sql", type: "text，只读", source: "NL2SQL 返回，查询视图 `v_inventory_recon`", required: "只读展示" }
+      ],
+      guardrails: [
+        { level: "high", text: "`parseQuery()` 生成的 SQL 直接展示给用户，但页面没有约定执行边界。接入真实 LLM 后，模型可能生成非只读语句或跨仓查询。", fix: "服务端用 SQL AST 白名单（仅 SELECT、仅 `v_inventory_recon`、强制 LIMIT），并统一注入 `warehouse_id IN (:user_scope)`；前端的 SQL 只做展示，永不执行。" },
+        { level: "medium", text: "`#ai-input` 没有长度上限，`runAi()` 也没有防抖：连续回车会并发发起多次查询，真实接口按 token 计费。", fix: "限制 200 字；请求进行中禁用按钮；相同问题 1 s 内去重。" },
+        { level: "medium", text: "手动筛选与 AI 条件叠加后很容易为空，表格只显示「暂无数据」，用户不知道是哪一个条件导致的。", fix: "空结果时列出全部生效条件，并提供「清除 AI 条件」「重置筛选」两个按钮。" },
+        { level: "low", text: "筛选条件只存在内存 `state` 里，刷新或把链接发给同事后筛选丢失。", fix: "同步到 URL 查询参数，如 `?wh=WH-SH01&status=pending`。" }
+      ]
+    },
+
+    {
+      id: 2,
+      title: "核心库存与对账 KPI 卡片组",
+      type: "KPI Cards",
+      summary: "一眼看清货值、预警、差异和待办，判断今天先处理什么。",
+      rules: [
+        "4 张卡片的统计口径 **只受仓库筛选影响**，不受 SKU、状态、温层、AI 条件影响（`renderKpis()` 使用 `scoped()`）。",
+        "选择「全部仓库」时显示较昨日变化（箭头 + 数值 + 文字）；选中单仓时隐藏变化值，改为显示口径说明。",
+        "平账、生成盘亏单、提交调拨、金蝶同步完成后立即重算。",
+        "预警 SKU = 库存预警等级 ≥ 二级 **或** 剩余效期 ≤ 30 天（`isAlert()`）。",
+        "库存预警三级阈值（`warnLevel()`）：一级「关注」可用 ≤ 安全库存 × 1.2；二级「预警」可用 ≤ 安全库存；三级「告警」可用 ≤ 安全库存 × 0.5 或可用 = 0（缺货）。"
+      ],
+      formula: [
+        { label: "在库总货值", expr: "Σ (WMS 可用 + 在途锁定) × 加权平均成本，单位万元，保留 1 位小数" },
+        { label: "差异涉及金额", expr: "Σ |差异量| × 单位成本，单位元，四舍五入到整数" }
+      ],
+      fields: [
+        { name: "stock_value", type: "金额，万元，1 位小数", source: "Σ (`wms_available` + `in_transit_locked`) × `unit_cost`", required: "计算" },
+        { name: "alert_sku_count", type: "整数 / SKU 总数", source: "count(`warn_level` ≥ 2 或 `expiry_days` ≤ 30)", required: "计算" },
+        { name: "diff_bill_count", type: "整数，单", source: "count(`diff_qty` ≠ 0)，当日同步批次", required: "计算" },
+        { name: "diff_amount", type: "金额，元", source: "Σ |`diff_qty`| × `unit_cost`", required: "计算" },
+        { name: "pending_transfer_count", type: "整数，单", source: "count(调拨单状态 = PENDING_APPROVAL)", required: "调拨单服务" },
+        { name: "delta_vs_yesterday", type: "带符号整数或百分比", source: "当前值 − 昨日 23:59 快照", required: "仅全部仓库时展示" }
+      ],
+      guardrails: [
+        { level: "medium", text: "「较昨日」的 +2.3%、↑2、↓3 是写死在 `renderKpis()` 里的字符串，不随数据变化，评审时容易被当成真实指标。", fix: "后端返回 T-1 日快照，前端只算差值；没有快照时显示「—」。" },
+        { level: "medium", text: "卡片没有数据截止时间，也没有加载态；金蝶同步进行中仍然显示旧值。", fix: "卡片底部显示「数据截至 HH:mm」，同步中显示骨架屏或「更新中」。" },
+        { level: "low", text: "「待处理调拨申请」是前端计数 `state.transfers`，刷新页面后回到 3。", fix: "改为读取 GET /api/transfers/summary。" }
+      ]
+    },
+
+    {
+      id: 3,
+      title: "库存明细与金蝶 ERP 账实对账主表格",
+      type: "Data Table",
+      summary: "逐行比对 WMS 实物与金蝶账面，就地平账或生成盘亏单。",
+      rules: [
+        "一行 = 仓库 × SKU × 批次；每页 10 条。点击「账实差异」表头在 |差异| 降序、升序、默认顺序之间切换。",
+        "页签：全部 / 有差异（差异 ≠ 0）/ 预警·临期 / 已平账，数字是当前筛选条件下的计数。",
+        "差异着色：负数（盘亏）红底，正数（盘盈）橙底，0 绿底。效期 ≤ 7 天显示「严重临期」红标签，≤ 30 天显示「临期」橙标签。",
+        "**一键平账**：差异 ≠ 0 且状态 ≠ 已平账时出现。点击后把金蝶账面改为 WMS 可用 + 在途锁定，状态变为已平账（`settle()`）。",
+        "**生成盘亏单**：差异 < 0 且状态为待对账或异常挂起时出现。点击后状态变为差异核查中，生成单号 `PK{yyyyMMdd}-{3 位序号}`（`lossOrder()`）。",
+        "勾选行后「批量平账（n）」可用，自动跳过已平账和无差异的行。"
+      ],
+      formula: { label: "账实差异", expr: "差异量 = WMS 可用库存 + 在途锁定 − 金蝶即时库存（件，整数；< 0 盘亏，> 0 盘盈）" },
+      fields: [
+        { name: "sku_code", type: "string，`SKU-{品类}-{5 位}`", source: "WMS 商品主数据", required: "必填" },
+        { name: "sku_name / spec", type: "string", source: "商品主数据", required: "必填" },
+        { name: "batch_no", type: "string，`B{yyMM}-{dd}`", source: "WMS 入库批次", required: "必填" },
+        { name: "expiry_days", type: "整数，天", source: "到期日 − 今天", required: "计算" },
+        { name: "wms_available", type: "整数，件", source: "WMS 实时库存：在库 − 冻结 − 已分配（推断）", required: "必填" },
+        { name: "in_transit_locked", type: "整数，件", source: "已提交调拨单、出库单锁定的数量", required: "默认 0" },
+        { name: "erp_qty", type: "整数，件", source: "金蝶云·星空即时库存 `STK_Inventory.FBaseQty`（基本单位数量）", required: "同步写入" },
+        { name: "diff_qty", type: "带符号整数，件", source: "见上方公式", required: "计算" },
+        { name: "warn_level", type: "enum：正常 / 关注 / 预警 / 告警 / 缺货", source: "三级阈值，见区块 ②", required: "计算" },
+        { name: "recon_status", type: "enum：PENDING / CHECKING / SETTLED / SUSPENDED", source: "对账单状态机", required: "必填，默认 PENDING" }
+      ],
+      guardrails: [
+        { level: "high", text: "`settle()` 直接把金蝶账面覆盖成 WMS 数量：没有二次确认、没有原因码、没有金额审批阈值，误点即改账且无法撤销。", fix: "弹窗确认差异量与金额并必填原因码（盘点误差 / 串货 / 漏单）；差异金额 > ¥5,000 走主管审批；通过「调整单」回写金蝶，而不是直接改数。" },
+        { level: "high", text: "平账请求不带版本号。两个人同时处理同一行会重复过账，或覆盖刚同步回来的新数据。", fix: "对账行带 `version`，PATCH 时校验，冲突返回 409 并提示「该行已被他人处理，已为你刷新」。" },
+        { level: "medium", text: "「生成盘亏单」在状态变化前没有加锁，网络慢时可以对同一行重复点击，每次都生成新单号。", fix: "按 `recon_line_id` 幂等；已有未完结的盘亏单时按钮置灰并显示单号。" },
+        { level: "medium", text: "空结果只显示「暂无数据」，没有区分「无数据 / 无权限 / 加载失败」，也没有清空筛选的入口。", fix: "三种空状态分别给出文案和操作按钮。" },
+        { level: "low", text: "勾选会跨页保留（`state.selected`），用户看不到其他页已经选了哪些。", fix: "表头提示「已选 n 项（含其他页）」并提供「清空选择」。" }
+      ]
+    },
+
+    {
+      id: 4,
+      title: "多仓调拨与用车申请抽屉",
+      type: "Drawer Form",
+      summary: "在发现缺货或临期时，直接发起跨仓调拨并预约干线车辆。",
+      rules: [
+        "「发起调拨」打开右侧抽屉；「用车申请」打开同一个抽屉，并默认开启「需要用车」。",
+        "调出仓默认取当前筛选的仓库，否则为华东冷链仓；调入仓默认另一个仓。商品列表随调出仓联动（`fillSkus()`），选中后显示该仓可用量。",
+        "提交校验（`submitTransfer()`）：必填项；调出仓 ≠ 调入仓；数量为正整数且 ≤ 调出仓可用；到货日期 ≥ 明天；开启用车时车型必填。错误逐项显示在字段下方。",
+        "提交成功：抽屉关闭，生成单号 `TR{yyyyMMdd}-{4 位序号}`，待处理调拨 +1；调出仓该 SKU 的可用量减少、在途锁定增加，账实差异不变。",
+        "点击遮罩、取消或按 Esc 关闭抽屉；关闭不清空数量和备注，提交成功后才清空。"
+      ],
+      formula: { label: "提交后库存锁定", expr: "WMS 可用′ = WMS 可用 − 调拨数量；在途锁定′ = 在途锁定 + 调拨数量（差异量不变）" },
+      fields: [
+        { name: "transfer_type", type: "enum：NORMAL 常规调拨 / URGENT 紧急补货", source: "单选", required: "必填，默认 NORMAL" },
+        { name: "from_warehouse_id", type: "enum 仓库", source: "当前筛选的仓库", required: "必填" },
+        { name: "to_warehouse_id", type: "enum 仓库，≠ 调出仓", source: "用户选择", required: "必填" },
+        { name: "sku_code", type: "string", source: "调出仓库存列表", required: "必填" },
+        { name: "qty", type: "正整数，件，≤ 调出仓可用", source: "用户输入", required: "必填" },
+        { name: "expected_arrival_date", type: "date，≥ 明天", source: "用户输入", required: "必填，默认明天" },
+        { name: "need_vehicle", type: "boolean", source: "开关", required: "默认否；「用车申请」入口默认是" },
+        { name: "vehicle_type", type: "enum：4.2 米冷藏车 / 7.6 米冷藏车 / 9.6 米厢式货车", source: "运力字典", required: "用车时必填" },
+        { name: "loading_time", type: "time，HH:mm", source: "用户输入", required: "默认 16:00（干线截单时间）" },
+        { name: "remark", type: "string，≤ 200 字", source: "用户输入", required: "选填" }
+      ],
+      guardrails: [
+        { level: "high", text: "`submitTransfer()` 在 800 ms 的提交过程中只改了按钮文案、没有禁用按钮，双击会生成两张调拨单并重复锁定库存。", fix: "点击后立即禁用；POST /api/transfers 带 `Idempotency-Key`，重复请求返回第一次的结果。" },
+        { level: "high", text: "冷冻、冷藏 SKU 可以选择「9.6 米厢式货车」（常温车），有断链风险。", fix: "商品温层为冷冻或冷藏时只允许冷藏车型；选错时就地报错。" },
+        { level: "medium", text: "可用量校验只用页面加载时的数据，提交时库存可能已被其他单据锁定。", fix: "服务端在事务内复核可用量（`SELECT … FOR UPDATE`），不足返回 409 并展示最新可用量。" },
+        { level: "low", text: "「16:00 截单」只写在说明文字里，16:00 之后提交仍然默认次日到货。", fix: "超过截单时间时默认后天到货，并在日期下方说明原因。" }
+      ]
+    },
+
+    {
+      id: 5,
+      title: "批量导入/导出与金蝶 API 手动同步按钮组",
+      type: "Action Group",
+      summary: "把金蝶账面拉到本地比对，并与线下盘点表互相导入导出。",
+      rules: [
+        "**同步金蝶 ERP**：点击后按钮进入加载态并禁用，状态行显示「正在拉取金蝶即时库存（STK_Inventory）…」，约 2.2 s 后刷新「上次同步」时间，并提示拉取、自动平账、新增差异的条数（`syncErp()`）。",
+        "同步结果自动比对：差异归零的行置为已平账，出现新差异的行置为待对账。",
+        "**导出 Excel**：按当前筛选和页签导出全部匹配行（不只当前页），UTF-8 BOM 编码的 CSV，文件名 `库存对账_{yyyyMMdd}.csv`（`exportCsv()`）。",
+        "**批量导入**：选择 .xlsx / .xls / .csv 后提示解析中，完成后提示成功与失败行数（原型为演示数据）。",
+        "状态行常驻显示连接状态：绿点「已连接」，蓝点闪烁「同步中」。"
+      ],
+      fields: [
+        { name: "last_sync_at", type: "datetime，页面显示 HH:mm:ss", source: "`sync_job.finished_at`", required: "只读" },
+        { name: "sync_status", type: "enum：IDLE / RUNNING / FAILED（推断）", source: "`sync_job.status`", required: "只读" },
+        { name: "pulled / auto_settled / new_diff", type: "整数", source: "同步任务结果", required: "只读" },
+        { name: "export_scope", type: "当前筛选 + 页签", source: "`visibleRows()`", required: "—" },
+        { name: "import_file", type: "文件：.xlsx / .xls / .csv", source: "本地选择", required: "必填" }
+      ],
+      guardrails: [
+        { level: "high", text: "同步只在当前页面禁用按钮，请求不带幂等键也没有冷却时间；多个用户或多个标签页可以同时触发全量拉取，金蝶 WebAPI 有调用频率限制（推断）。", fix: "服务端按「租户 + 仓库」加分布式锁，60 s 内重复触发直接返回进行中的 `job_id`；请求带 `Idempotency-Key`。" },
+        { level: "high", text: "`syncErp()` 只有成功分支：金蝶接口超时、登录失效或返回错误时，页面没有任何处理。", fix: "30 s 超时；失败时状态行变红并给出「重试」；连续 3 次失败告警值班人员。" },
+        { level: "medium", text: "检测到导出按钮没有防抖，连点三次会下载三份；文件在主线程同步生成，数据量大时页面会卡死。", fix: "加 1 s 防抖；超过 5,000 行转异步导出任务，完成后站内信通知下载。" },
+        { level: "medium", text: "导入只限制了扩展名：没有模板下载、大小上限和逐行错误报告。", fix: "提供导入模板；单文件 ≤ 10 MB 或 1 万行；失败行生成可下载的错误明细。" }
+      ]
+    }
+  ],
+
+  diagrams: [
+    {
+      title: "对账单生命周期",
+      kind: "state",
+      note: "每个非终态都有出口：核查超时或回写失败进入异常挂起，人工复核后回到核查。",
+      code: `stateDiagram-v2
+    state "待对账 PENDING" as PENDING
+    state "差异核查中 CHECKING" as CHECKING
+    state "已平账 SETTLED" as SETTLED
+    state "异常挂起 SUSPENDED" as SUSPENDED
+    [*] --> PENDING : 金蝶同步生成对账行
+    PENDING --> SETTLED : 差异为 0，自动平账
+    PENDING --> SETTLED : 一键平账（确认 + 原因码）
+    PENDING --> CHECKING : 生成盘亏单
+    CHECKING --> SETTLED : 盘亏单审核通过并回写金蝶
+    CHECKING --> SUSPENDED : 核查超过 48 小时或回写失败
+    SUSPENDED --> CHECKING : 人工复核
+    SETTLED --> PENDING : 下次同步出现新差异
+    SETTLED --> [*] : 月结关账`
+    },
+    {
+      title: "调拨单生命周期",
+      kind: "state",
+      note: "提交即锁定调出仓库存；驳回或撤回时释放锁定。",
+      code: `stateDiagram-v2
+    state "待审批" as PENDING_APPROVAL
+    state "已驳回" as REJECTED
+    state "待出库" as TO_SHIP
+    state "运输中" as IN_TRANSIT
+    state "已入库" as RECEIVED
+    state "已取消" as CANCELLED
+    [*] --> PENDING_APPROVAL : 提交并锁定库存
+    PENDING_APPROVAL --> TO_SHIP : 主管审批通过
+    PENDING_APPROVAL --> REJECTED : 驳回并释放锁定
+    TO_SHIP --> IN_TRANSIT : 装车发运
+    TO_SHIP --> CANCELLED : 撤回并释放锁定
+    IN_TRANSIT --> RECEIVED : 调入仓签收
+    REJECTED --> [*]
+    CANCELLED --> [*]
+    RECEIVED --> [*]`
+    },
+    {
+      title: "金蝶同步与自动对账流程",
+      kind: "flow",
+      note: "原型只实现了「调用成功」这一条路径；加锁、重试和失败分支是 AI 补充的兜底设计。",
+      code: `flowchart TD
+    A["点击「同步金蝶 ERP」⑤"] --> B{"60 秒内已有同步任务？"}
+    B -- 是 --> B1["返回进行中的 job_id"]
+    B -- 否 --> C["创建 sync_job，按租户与仓库加锁"]
+    C --> D["调用金蝶 WebAPI ExecuteBillQuery<br/>FormId = STK_Inventory"]
+    D --> E{"调用成功？"}
+    E -- 否 --> F["指数退避重试 3 次"]
+    F --> G{"仍然失败？"}
+    G -- 是 --> H["job 记为 FAILED，告警并提示重试"]
+    G -- 否 --> I
+    E -- 是 --> I["按 仓库 × SKU × 批次 比对 WMS"]
+    I --> J{"差异为 0？"}
+    J -- 是 --> K["对账行置为已平账"]
+    J -- 否 --> L["对账行置为待对账，计入差异单"]
+    K --> M["刷新 KPI ② 与表格 ③"]
+    L --> M`
+    },
+    {
+      title: "数据实体关系",
+      kind: "er",
+      note: "由页面字段反推（推断），落地前与 WMS、金蝶字段映射逐项确认。",
+      code: `erDiagram
+    WAREHOUSE ||--o{ INVENTORY_BALANCE : "存放"
+    SKU ||--o{ INVENTORY_BALANCE : "按批次记录"
+    INVENTORY_BALANCE ||--o{ RECON_LINE : "被对账"
+    SYNC_JOB ||--o{ RECON_LINE : "生成"
+    RECON_LINE ||--o| ADJUSTMENT_ORDER : "生成盘亏单"
+    WAREHOUSE ||--o{ TRANSFER_ORDER : "调出"
+    SKU ||--o{ TRANSFER_ORDER : "被调拨"
+    TRANSFER_ORDER ||--o| VEHICLE_REQUEST : "预约用车"
+    WAREHOUSE {
+        varchar id PK "WH-SH01"
+        varchar name
+    }
+    SKU {
+        varchar sku_code PK
+        varchar name
+        varchar temp_zone
+        decimal unit_cost
+        int safety_stock
+    }
+    INVENTORY_BALANCE {
+        bigint id PK
+        varchar warehouse_id FK
+        varchar sku_code FK
+        varchar batch_no
+        date expiry_date
+        int wms_available
+        int in_transit_locked
+    }
+    RECON_LINE {
+        bigint id PK
+        bigint sync_job_id FK
+        bigint balance_id FK
+        int erp_qty
+        int diff_qty
+        varchar status "PENDING / CHECKING / SETTLED / SUSPENDED"
+        int version "乐观锁"
+    }
+    SYNC_JOB {
+        bigint id PK
+        varchar status "RUNNING / SUCCESS / FAILED"
+        datetime finished_at
+    }
+    ADJUSTMENT_ORDER {
+        varchar id PK "PK20261121-007"
+        bigint recon_line_id FK
+        int qty
+        varchar reason_code
+    }
+    TRANSFER_ORDER {
+        varchar id PK "TR20261121-0004"
+        varchar from_warehouse_id FK
+        varchar to_warehouse_id FK
+        varchar sku_code FK
+        int qty
+        varchar status
+    }
+    VEHICLE_REQUEST {
+        bigint id PK
+        varchar transfer_id FK
+        varchar vehicle_type
+        varchar loading_time
+    }`
+    }
+  ],
+
+  edgeCases: [
+    { category: "empty", trigger: "新仓库刚接入，金蝶还没同步过", ui: "表格空状态「还没有对账数据」+ 主按钮「立即同步金蝶」；KPI 显示「—」而不是 0", fallback: "接口返回 `items: []` 与 `last_sync_at: null`，前端据此区分「未同步」和「无差异」", refs: [2, 3, 5] },
+    { category: "empty", trigger: "筛选与 AI 条件的交集为空", ui: "「没有符合条件的商品」，列出生效条件，并提供「清除 AI 条件」「重置筛选」", fallback: "返回 `total = 0`，HTTP 200，不报错", refs: [1, 3] },
+    { category: "empty", trigger: "「有差异」页签为 0", ui: "绿色空状态「今日账实一致」+ 上次同步时间", fallback: "正常返回，不触发告警", refs: [3] },
+    { category: "boundary", trigger: "差异 ≥ 1,000 件或差异金额 ≥ ¥5,000", ui: "差异加粗并显示「大额」标签；「一键平账」变为「提交审批」", fallback: "服务端按金额阈值强制走审批流，前端隐藏按钮不等于授权", refs: [3] },
+    { category: "boundary", trigger: "调拨数量为 0、负数、小数、超过可用量或大于 99,999", ui: "字段下方即时报错：「数量需为正整数」「超出调出仓可用库存」", fallback: "服务端二次校验，返回 422 和字段级错误", refs: [4] },
+    { category: "boundary", trigger: "AI 查询超过 200 字或包含 DROP / UPDATE 等关键字", ui: "输入框显示字数并截断；提示「只支持查询类问题」", fallback: "NL2SQL 只读白名单 + SQL AST 校验，拒绝非 SELECT 语句", refs: [1] },
+    { category: "network", trigger: "金蝶 WebAPI 超过 30 s 或返回错误", ui: "按钮恢复可点，状态行变红「同步失败：金蝶接口超时」并提供「重试」", fallback: "指数退避重试 3 次；仍失败时 job 记为 FAILED 并告警值班", refs: [5] },
+    { category: "network", trigger: "表格首屏加载超过 300 ms", ui: "KPI 与表格显示骨架屏，不闪现「暂无数据」", fallback: "列表接口 P95 < 500 ms，超时降级读缓存视图", refs: [2, 3] },
+    { category: "network", trigger: "提交调拨或平账时网络抖动、用户重复点击", ui: "按钮进入加载态并禁用，重复点击无效", fallback: "`Idempotency-Key` 24 小时去重，重复请求返回第一次的结果", refs: [3, 4] },
+    { category: "concurrency", trigger: "两名财务同时对同一行点「一键平账」", ui: "后提交的人看到「该行已被王敏于 10:21 平账，已为你刷新」", fallback: "`recon_line.version` 乐观锁，冲突返回 409", refs: [3] },
+    { category: "concurrency", trigger: "同步进行中有人对旧数据平账", ui: "同步期间操作按钮置灰，提示「正在同步金蝶，稍后再试」", fallback: "同步任务持有仓库级锁，写操作返回 423", refs: [3, 5] },
+    { category: "concurrency", trigger: "提交调拨时，可用库存已被其他单据锁定", ui: "数量字段报错「可用库存已变为 320 件」，并自动刷新可用量", fallback: "在事务内 `SELECT … FOR UPDATE` 复核，不足返回 409", refs: [4] },
+    { category: "permission", trigger: "只能看本仓的仓管员切换到其他仓库", ui: "仓库下拉只列出有权限的仓；手改 URL 时显示 403 页面", fallback: "所有查询统一注入 `warehouse_id IN (:scope)`，NL2SQL 结果同样过滤", refs: [1, 3] },
+    { category: "permission", trigger: "没有平账权限的角色（仓管员）", ui: "不显示「一键平账」，保留「生成盘亏单」", fallback: "接口校验 `recon:settle` 权限，越权返回 403", refs: [3] },
+    { category: "permission", trigger: "登录态失效时提交调拨", ui: "弹出重新登录，表单内容保留，登录后自动重新提交", fallback: "401 后用 refresh token 续期；表单草稿暂存 sessionStorage", refs: [4] }
+  ],
+
+  tracking: [
+    { event: "inventory_filter_apply", trigger: "下拉筛选变化或点击「查询」", properties: "warehouse_id, recon_status, temp_zone, keyword_len, result_count", refs: [1] },
+    { event: "nl2sql_query_submit", trigger: "点击「生成查询」或回车", properties: "query_len, parsed, cond_count, latency_ms", refs: [1] },
+    { event: "nl2sql_sql_view", trigger: "点击「查看 SQL」", properties: "cond_count", refs: [1] },
+    { event: "kpi_cards_view", trigger: "KPI 首次渲染", properties: "warehouse_scope, alert_sku_count, diff_bill_count", refs: [2] },
+    { event: "recon_settle_click", trigger: "点击「一键平账」或「批量平账」", properties: "sku_codes, diff_qty, diff_amount, is_batch", refs: [3] },
+    { event: "recon_loss_order_create", trigger: "点击「生成盘亏单」", properties: "sku_code, diff_qty, order_id", refs: [3] },
+    { event: "transfer_submit", trigger: "调拨抽屉点击「提交申请」", properties: "from_wh, to_wh, sku_code, qty, need_vehicle, vehicle_type, result", refs: [4] },
+    { event: "transfer_validation_error", trigger: "提交时校验失败", properties: "fields, transfer_type", refs: [4] },
+    { event: "erp_sync_click", trigger: "点击「同步金蝶 ERP」", properties: "since_last_sync_s, warehouse_scope", refs: [5] },
+    { event: "erp_sync_result", trigger: "同步任务结束", properties: "status, pulled, auto_settled, new_diff, duration_ms", refs: [5] },
+    { event: "recon_export", trigger: "点击「导出 Excel」", properties: "row_count, tab, filter_hash", refs: [5] }
+  ]
+};
+/* VIBE-PRD:DATA:END */
+</script>
+
+<script id="vibe-prd-viewer">
+(() => {
+  'use strict';
+
+  /* ---------- runtime injected into the prototype iframe ---------- */
+  function prdRuntime(cfg) {
+    if (window.__vibePrd) return;
+    window.__vibePrd = true;
+    var ATTR = 'data-prd-badge';
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var css = [
+      '#vibe-prd-layer{position:fixed;inset:0;pointer-events:none;z-index:2147483000}',
+      '#vibe-prd-layer.is-off{display:none}',
+      '.vibe-prd-badge{all:unset;box-sizing:border-box;position:absolute;width:22px;height:22px;border-radius:50%;background:#E11D48;color:#fff;border:2px solid #fff;font:700 11.5px/18px system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;font-variant-numeric:tabular-nums;cursor:pointer;pointer-events:auto;box-shadow:0 2px 8px rgba(225,29,72,.45);transition:transform .16s ease,opacity .2s,box-shadow .2s}',
+      '.vibe-prd-badge[hidden]{display:none}',
+      '.vibe-prd-badge::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid #E11D48;animation:vibe-prd-ping 2.2s cubic-bezier(0,0,.2,1) infinite;pointer-events:none}',
+      '@keyframes vibe-prd-ping{0%{transform:scale(1);opacity:.6}75%,100%{transform:scale(2.1);opacity:0}}',
+      '.vibe-prd-badge:focus-visible{outline:2px solid #2563EB;outline-offset:2px}',
+      '.vibe-prd-badge.is-active{transform:scale(1.28);box-shadow:0 0 0 4px rgba(225,29,72,.22),0 4px 14px rgba(225,29,72,.5)}',
+      '.vibe-prd-badge.is-under{opacity:.3;pointer-events:none}',
+      '.vibe-prd-badge.is-flash{animation:vibe-prd-bounce .42s ease-in-out 3}',
+      '@keyframes vibe-prd-bounce{0%,100%{transform:scale(1.28)}50%{transform:scale(1.75)}}',
+      '[data-prd-badge]{scroll-margin:72px 0 24px}',
+      '.vibe-prd-outline{outline:2px dashed #E11D48!important;outline-offset:3px!important}',
+      '.vibe-prd-flash{animation:vibe-prd-halo .5s ease-in-out 3!important}',
+      '@keyframes vibe-prd-halo{0%,100%{box-shadow:0 0 0 0 rgba(225,29,72,0)}50%{box-shadow:0 0 0 7px rgba(225,29,72,.2)}}',
+      '@media (prefers-reduced-motion:reduce){.vibe-prd-badge::before{animation:none}.vibe-prd-flash,.vibe-prd-badge.is-flash{animation:none!important}}'
+    ].join('\n');
+    var layer, badges = new Map(), visible = cfg.badges !== false;
+    var hoverId = null, pinId = null, regionId = null, dwellTimer = 0, lastIds = '', until = 0, raf = 0;
+
+    function send(msg) { msg.__vibePrd = 1; try { parent.postMessage(msg, '*'); } catch (e) {} }
+    function idOf(el) { return String(el.getAttribute(ATTR)).trim(); }
+    function regions(id) {
+      var all = Array.prototype.slice.call(document.querySelectorAll('[' + ATTR + ']'));
+      return id == null ? all : all.filter(function (el) { return idOf(el) === String(id); });
+    }
+    function box(el) {
+      var r = el.getBoundingClientRect();
+      if (r.width < 1 && r.height < 1) return null;
+      var cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null;
+      return r;
+    }
+    function topAt(x, y) {
+      var list = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+      for (var i = 0; i < list.length; i++) if (!layer.contains(list[i])) return list[i];
+      return null;
+    }
+    function kick(ms) { until = Math.max(until, performance.now() + (ms || 0)); if (!raf) raf = requestAnimationFrame(tick); }
+    function tick() { raf = 0; layout(); if (performance.now() < until) raf = requestAnimationFrame(tick); }
+
+    function makeBadge(id) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'vibe-prd-badge'; b.textContent = id; b.dataset.id = id;
+      b.setAttribute('aria-label', 'PRD ' + id);
+      b.addEventListener('mouseenter', function () { setHover(id); send({ type: 'hover', id: Number(id), via: 'badge' }); });
+      b.addEventListener('mouseleave', function () { setHover(regionId); send({ type: 'leave', id: Number(id) }); });
+      b.addEventListener('focus', function () { setHover(id); send({ type: 'hover', id: Number(id), via: 'badge' }); });
+      b.addEventListener('blur', function () { setHover(null); });
+      b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); send({ type: 'click', id: Number(id) }); });
+      layer.appendChild(b);
+      return b;
+    }
+
+    function layout() {
+      var W = innerWidth, H = innerHeight, seen = new Set(), ids = [];
+      regions().forEach(function (el) {
+        var id = idOf(el);
+        if (ids.indexOf(id) < 0) ids.push(id);
+        var b = badges.get(el);
+        if (!b) { b = makeBadge(id); badges.set(el, b); }
+        seen.add(el);
+        var r = visible ? box(el) : null;
+        if (!r || r.bottom < 6 || r.top > H - 6 || r.right < 6 || r.left > W - 6) { b.hidden = true; return; }
+        var x = Math.min(Math.max(r.right - 11, 13), W - 13);
+        var y = Math.min(Math.max(r.top + 1, 13), Math.max(13, r.bottom - 13), H - 13);
+        var hit = topAt(Math.min(Math.max(r.right - 6, 1), W - 2), Math.min(Math.max(r.top + 6, 1), H - 2));
+        var under = !!hit && hit !== el && !el.contains(hit);
+        if (under && Math.min(r.bottom, H) - Math.max(r.top, 0) < 64) { b.hidden = true; return; }
+        b.hidden = false;
+        b.style.left = (x - 11) + 'px';
+        b.style.top = (y - 11) + 'px';
+        b.classList.toggle('is-under', under);
+      });
+      badges.forEach(function (b, el) { if (!seen.has(el)) { b.remove(); badges.delete(el); } });
+      ids.sort(function (a, c) { return Number(a) - Number(c); });
+      var key = ids.join(',');
+      if (key !== lastIds) { lastIds = key; send({ type: 'ready', ids: ids.map(Number) }); }
+    }
+
+    function paint() {
+      regions().forEach(function (el) {
+        var id = idOf(el);
+        el.classList.toggle('vibe-prd-outline', id === hoverId || id === pinId);
+      });
+      badges.forEach(function (b) { b.classList.toggle('is-active', b.dataset.id === hoverId || b.dataset.id === pinId); });
+    }
+    function setHover(id) { hoverId = id == null ? null : String(id); paint(); }
+
+    function focus(id, flash) {
+      var all = regions(id);
+      var el = all.filter(function (x) { return box(x); })[0];
+      if (!el) { if (all.length) send({ type: 'hidden', id: Number(id) }); return; }
+      setHover(id);
+      var r = el.getBoundingClientRect(), H = innerHeight;
+      if (r.top < 0 || r.bottom > H) {
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: r.height > H * 0.8 ? 'start' : 'center', inline: 'nearest' });
+      }
+      if (flash) {
+        el.classList.remove('vibe-prd-flash'); void el.offsetWidth; el.classList.add('vibe-prd-flash');
+        var b = badges.get(el);
+        if (b) { b.classList.remove('is-flash'); void b.offsetWidth; b.classList.add('is-flash'); }
+        setTimeout(function () { el.classList.remove('vibe-prd-flash'); if (b) b.classList.remove('is-flash'); }, 1600);
+      }
+      kick(900);
+    }
+
+    function init() {
+      var st = document.createElement('style');
+      st.id = 'vibe-prd-style'; st.textContent = css;
+      (document.head || document.documentElement).appendChild(st);
+      layer = document.createElement('div');
+      layer.id = 'vibe-prd-layer';
+      if (!visible) layer.classList.add('is-off');
+      document.body.appendChild(layer);
+
+      document.addEventListener('mouseover', function (e) {
+        if (layer.contains(e.target)) return;
+        var el = e.target.closest ? e.target.closest('[' + ATTR + ']') : null;
+        var id = el ? idOf(el) : null;
+        if (id === regionId) return;
+        var prev = regionId;
+        regionId = id;
+        clearTimeout(dwellTimer);
+        if (prev != null && hoverId === prev) { setHover(null); send({ type: 'leave', id: Number(prev) }); }
+        if (id != null && visible) {
+          dwellTimer = setTimeout(function () { setHover(id); send({ type: 'hover', id: Number(id), via: 'region' }); }, cfg.dwell || 420);
+        }
+      }, true);
+      document.documentElement.addEventListener('mouseleave', function () {
+        clearTimeout(dwellTimer);
+        if (regionId != null && hoverId === regionId) send({ type: 'leave', id: Number(regionId) });
+        regionId = null; setHover(null);
+      });
+      window.addEventListener('message', function (e) {
+        if (e.source !== parent) return;
+        var m = e.data;
+        if (!m || m.__vibePrd !== 1) return;
+        if (m.type === 'badges') { visible = !!m.visible; layer.classList.toggle('is-off', !visible); if (!visible) setHover(null); kick(60); }
+        else if (m.type === 'pin') { pinId = m.id == null ? null : String(m.id); paint(); }
+        else if (m.type === 'hover') { setHover(m.id); }
+        else if (m.type === 'focus') { focus(String(m.id), m.flash !== false); }
+      });
+      document.addEventListener('scroll', function () { kick(120); }, true);
+      window.addEventListener('resize', function () { kick(250); });
+      ['transitionrun', 'animationstart'].forEach(function (t) { document.addEventListener(t, function () { kick(700); }, true); });
+      new MutationObserver(function (list) {
+        for (var i = 0; i < list.length; i++) { if (!layer.contains(list[i].target)) { kick(500); return; } }
+      }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+      if (window.ResizeObserver) new ResizeObserver(function () { kick(150); }).observe(document.documentElement);
+      window.addEventListener('load', function () { kick(900); });
+      kick(1200);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  }
+
+  /* ---------- viewer ---------- */
+  const D = window.VIBE_PRD;
+  const root = document.documentElement;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const store = {
+    get(k) { try { return localStorage.getItem('vibe-prd:' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('vibe-prd:' + k, String(v)); } catch (e) { /* storage unavailable */ } }
+  };
+  const media = (q) => (window.matchMedia ? window.matchMedia(q).matches : false);
+  const behavior = media('(prefers-reduced-motion: reduce)') ? 'auto' : 'smooth';
+  const isNarrow = () => media('(max-width: 900px)');
+  const MERMAID_VERSION = '11.16.1';
+  const CATS = ['empty', 'boundary', 'network', 'concurrency', 'permission'];
+  const DEVICE_W = { tablet: 768, mobile: 375 };
+
+  const ICONS = {
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+    contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    printer: '<path d="M7 9V3.5h10V9"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
+    reload: '<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M20.5 3.5v5h-5"/>',
+    external: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    tablet: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/>',
+    phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+    locate: '<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    code: '<path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>'
+  };
+  const icon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
+  const I18N = {
+    zh: {
+      badges: '标注红点', badgesTip: '显示/隐藏标注红点（B）', theme: '主题', themeTip: '切换浅色/深色（T）',
+      print: '导出 PDF', printTip: '导出 PDF / 打印：A4 横版，自动展开全部批注',
+      reload: '重新加载原型', openNew: '在新标签页打开原型', desktop: '桌面 100%', tablet: '平板 768px', mobile: '手机 375px',
+      splitter: '拖动调整左右宽度，双击还原', viewProto: '原型', viewDoc: 'PRD', close: '关闭',
+      tabs: { notes: ['页面批注', 'UI Annotations'], arch: ['状态机与架构', 'State & Architecture'], edge: ['异常与埋点', 'Edge Cases & Tracking'] },
+      status: { draft: '草稿 Draft', review: '评审中 In Review', approved: '已定稿 Approved' },
+      regions: '个标注区块', guards: '条 AI 诊断', high: '条高风险',
+      rules: ['业务逻辑与交互规则', 'Interaction rules'], fields: ['字段字典', 'Field specs'], guard: ['AI 诊断补充建议', 'Vibe guardrail warning'],
+      cols: ['字段名', '类型/格式', '来源/计算公式', '必填/默认值'], fix: '建议：', locate: '在原型中定位',
+      level: { high: '高', medium: '中', low: '低' },
+      kind: { state: '状态机', flow: '流程图', er: 'ER 图', sequence: '时序图', other: '图' },
+      zoom: '放大查看', source: '查看源码', copy: '复制', copied: '已复制 Mermaid 源码',
+      mmLoading: '正在加载 Mermaid…', mmOffline: 'Mermaid 没有加载成功（离线或 CDN 不可达），下面先显示源码。联网后刷新即可渲染。', mmError: 'Mermaid 语法错误：',
+      edgeTitle: ['五维异常与边界', 'Edge-case matrix'], trackTitle: ['核心埋点', 'Tracking events'],
+      edgeCols: ['触发条件', '前端 UI/文案表现', '后端/数据兜底策略', '关联'], trackCols: ['event_name', '触发时机', 'properties', '关联'],
+      cats: { empty: '空数据与冷启动', boundary: '边界与溢出', network: '网络与接口', concurrency: '并发与状态冲突', permission: '权限与登录态', other: '其他' },
+      catsAlt: { empty: 'Empty / zero state', boundary: 'Boundary / overflow', network: 'Network / API latency', concurrency: 'Concurrency & state conflict', permission: 'Permission & auth guard', other: 'Other' },
+      missCat: '这一类还没有用例：vibe-prd 要求每类至少 2 条。',
+      issues: '项一致性问题', noBadge: '批注 %s 在原型里找不到 data-prd-badge="%s"', noCard: '原型里的标注 %s 没有对应的批注卡片',
+      orphan: '原型里没有找到这个编号的区块。', hidden: '区块 %s 当前没有显示（例如弹窗或抽屉还没打开），请先在原型里触发它。',
+      noData: '没有读到 window.VIBE_PRD。请检查 DATA 区块的 JS 语法，浏览器控制台里有具体报错。',
+      source: '来源', updated: '更新于', empty: '暂无内容'
+    },
+    en: {
+      badges: 'Badges', badgesTip: 'Show or hide the red badges (B)', theme: 'Theme', themeTip: 'Light or dark (T)',
+      print: 'Export PDF', printTip: 'Export PDF / print: A4 landscape, every annotation expanded',
+      reload: 'Reload prototype', openNew: 'Open the prototype in a new tab', desktop: 'Desktop 100%', tablet: 'Tablet 768px', mobile: 'Mobile 375px',
+      splitter: 'Drag to resize, double-click to reset', viewProto: 'Prototype', viewDoc: 'PRD', close: 'Close',
+      tabs: { notes: ['UI Annotations', ''], arch: ['State & Architecture', ''], edge: ['Edge Cases & Tracking', ''] },
+      status: { draft: 'Draft', review: 'In review', approved: 'Approved' },
+      regions: 'regions', guards: 'AI findings', high: 'high risk',
+      rules: ['Interaction rules', ''], fields: ['Field specs', ''], guard: ['Vibe guardrail warnings', ''],
+      cols: ['Field', 'Type / format', 'Source / formula', 'Required / default'], fix: 'Fix: ', locate: 'Locate in prototype',
+      level: { high: 'High', medium: 'Med', low: 'Low' },
+      kind: { state: 'State', flow: 'Flow', er: 'ER', sequence: 'Sequence', other: 'Diagram' },
+      zoom: 'Zoom', source: 'Mermaid source', copy: 'Copy', copied: 'Mermaid source copied',
+      mmLoading: 'Loading Mermaid…', mmOffline: 'Mermaid could not load (offline or CDN blocked), so the source is shown below. Reload when you are online.', mmError: 'Mermaid syntax error: ',
+      edgeTitle: ['Edge-case matrix', ''], trackTitle: ['Tracking events', ''],
+      edgeCols: ['Trigger', 'Frontend UI & copy', 'Backend / data fallback', 'Refs'], trackCols: ['event_name', 'Trigger', 'properties', 'Refs'],
+      cats: { empty: 'Empty / zero state', boundary: 'Boundary / overflow', network: 'Network / API latency', concurrency: 'Concurrency & state conflict', permission: 'Permission & auth guard', other: 'Other' },
+      catsAlt: {},
+      missCat: 'No cases in this category yet. vibe-prd expects at least 2.',
+      issues: 'issues', noBadge: 'Annotation %s has no data-prd-badge="%s" in the prototype', noCard: 'Badge %s in the prototype has no annotation card',
+      orphan: 'No region with this number exists in the prototype.', hidden: 'Region %s is not on screen (a closed modal or drawer?). Open it in the prototype first.',
+      noData: 'window.VIBE_PRD was not found. Check the JavaScript syntax of the DATA block; the browser console shows the exact error.',
+      source: 'Source', updated: 'Updated', empty: 'Nothing here yet'
+    }
+  };
+
+  const meta = (D && D.meta) || {};
+  const lang = meta.lang === 'en' ? 'en' : 'zh';
+  const T = I18N[lang];
+  const list = (k) => (D && Array.isArray(D[k]) ? D[k] : []);
+  const annotations = list('annotations').slice().sort((a, b) => Number(a.id) - Number(b.id));
+  const diagrams = list('diagrams');
+  const edgeCases = list('edgeCases');
+  const tracking = list('tracking');
+
+  const state = {
+    tab: 'notes', badges: store.get('badges') !== '0', device: store.get('device') || 'desktop',
+    split: parseFloat(store.get('split')) || 58, current: null, pinned: null, ids: null, scroll: {}
+  };
+
+  const app = $('#app'), frame = $('#proto-frame'), device = $('#device'), canvas = $('#canvas');
+  const split = $('#split'), splitter = $('#splitter'), docBody = $('#doc-body'), lightbox = $('#lightbox');
+  const panels = { notes: $('#panel-notes'), arch: $('#panel-arch'), edge: $('#panel-edge') };
+
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const md = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  const fill = (s, ...v) => v.reduce((out, x) => out.replace('%s', x), s);
+  const sub = (pair) => (pair[1] ? ` <small>${pair[1]}</small>` : '');
+  const post = (msg) => { try { frame.contentWindow.postMessage(Object.assign({ __vibePrd: 1 }, msg), '*'); } catch (e) { /* frame not ready */ } };
+  let toastTimer = 0;
+  function toast(text) {
+    const el = $('#toast'); el.textContent = text; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  /* ---------- rendering ---------- */
+  function chrome() {
+    root.lang = lang === 'en' ? 'en' : 'zh-CN';
+    document.title = (meta.title || 'PRD') + ' · PRD';
+    $('#doc-title').textContent = meta.title || 'PRD';
+    $('#doc-version').textContent = meta.version || 'v1.0.0';
+    const st = ['draft', 'review', 'approved'].includes(meta.status) ? meta.status : 'review';
+    const chip = $('#doc-status'); chip.dataset.status = st; chip.textContent = T.status[st];
+    $('#addr').textContent = meta.url || meta.source || 'prototype.html';
+    $('#print-meta').textContent = [meta.source && `${T.source}: ${meta.source}`, meta.updated && `${T.updated} ${meta.updated}`].filter(Boolean).join('    ');
+    $$('[data-i18n]').forEach((el) => { el.textContent = T[el.dataset.i18n]; });
+    $$('[data-i18n-title]').forEach((el) => { el.title = T[el.dataset.i18nTitle]; el.setAttribute('aria-label', T[el.dataset.i18nTitle]); });
+    $$('[data-icon]').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)));
+    const counts = { notes: annotations.length, arch: diagrams.length, edge: edgeCases.length + tracking.length };
+    $$('.tab').forEach((b) => { const k = b.dataset.tab; b.innerHTML = `${T.tabs[k][0]}${sub(T.tabs[k])}<span class="count">${counts[k]}</span>`; });
+  }
+  const printHead = (k) => `<h2 class="print-only">${T.tabs[k][0]}${sub(T.tabs[k])}</h2>`;
+
+  function cardHTML(a) {
+    const id = Number(a.id);
+    const formulas = [].concat(a.formula || []).filter(Boolean);
+    const rules = (a.rules || []).length ? `<section class="block"><h4>${T.rules[0]}${sub(T.rules)}</h4><ol class="rules">${a.rules.map((r) => `<li>${md(r)}</li>`).join('')}</ol></section>` : '';
+    const fx = formulas.map((f) => `<div class="formula"><span>${esc(f.label || '')}</span><code>${esc(f.expr || '')}</code></div>`).join('');
+    const fields = (a.fields || []).length ? `<section class="block"><h4>${T.fields[0]}${sub(T.fields)}</h4><div class="tbl-wrap"><table class="t spec"><thead><tr>${T.cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${a.fields.map((f) => `<tr><td>${md(f.name)}</td><td>${md(f.type)}</td><td>${md(f.source)}</td><td>${md(f.required)}</td></tr>`).join('')}</tbody></table></div></section>` : '';
+    const guards = (a.guardrails || []).length ? `<section class="block"><h4>${T.guard[0]}${sub(T.guard)}<span class="count">${a.guardrails.length}</span></h4><ul class="guards">${a.guardrails.map((g) => { const lv = ['high', 'medium', 'low'].includes(g.level) ? g.level : 'medium'; return `<li class="g"><span class="lvl lvl-${lv}">${T.level[lv]}</span><div><p>${md(g.text)}</p>${g.fix ? `<p class="fix"><b>${T.fix}</b>${md(g.fix)}</p>` : ''}</div></li>`; }).join('')}</ul></section>` : '';
+    return `<article class="card" id="annotation-card-${id}" data-id="${id}" tabindex="0">
+      <header class="card-head" title="${esc(T.locate)}"><span class="num">${id}</span><h3>${esc(a.title)}</h3>${a.type ? `<span class="type">${esc(a.type)}</span>` : ''}<button type="button" class="icon-btn" data-act="locate" data-id="${id}" title="${esc(T.locate)}" aria-label="${esc(T.locate)}">${icon('locate')}</button></header>
+      <div class="card-body">${a.summary ? `<p class="summary">${md(a.summary)}</p>` : ''}<p class="orphan">${T.orphan}</p><div class="col">${rules}${fx}</div><div class="col">${fields}</div>${guards}</div>
+    </article>`;
+  }
+
+  function renderNotes() {
+    if (!D) { panels.notes.innerHTML = `<div class="fatal">${T.noData}</div>`; return; }
+    const g = annotations.flatMap((a) => a.guardrails || []);
+    const high = g.filter((x) => x.level === 'high').length;
+    panels.notes.innerHTML = printHead('notes')
+      + `<div class="overview"><span><b>${annotations.length}</b> ${T.regions}</span><span><b>${g.length}</b> ${T.guards}</span>${high ? `<span class="hi"><b>${high}</b> ${T.high}</span>` : ''}</div>`
+      + `<div class="jump">${annotations.map((a) => `<button type="button" data-jump="${Number(a.id)}"><span class="num">${Number(a.id)}</span><span>${esc(a.title)}</span></button>`).join('')}</div>`
+      + `<div class="cards">${annotations.length ? annotations.map(cardHTML).join('') : `<p class="empty">${T.empty}</p>`}</div>`;
+  }
+
+  const kindOf = (d) => d.kind || (/^\s*stateDiagram/.test(d.code) ? 'state' : /^\s*erDiagram/.test(d.code) ? 'er' : /^\s*sequenceDiagram/.test(d.code) ? 'sequence' : /^\s*(flowchart|graph)/.test(d.code) ? 'flow' : 'other');
+  function renderArch() {
+    panels.arch.innerHTML = printHead('arch') + (diagrams.length ? diagrams.map((d, i) => `
+      <figure class="dg" id="diagram-${i}">
+        <header class="dg-head"><span class="kind">${esc(T.kind[kindOf(d)] || T.kind.other)}</span><h3>${esc(d.title || '')}</h3>
+          <button type="button" class="icon-btn" data-act="zoom" data-i="${i}" title="${T.zoom}" aria-label="${T.zoom}">${icon('expand')}</button>
+          <button type="button" class="icon-btn" data-act="code" data-i="${i}" title="${T.source}" aria-label="${T.source}" aria-expanded="false">${icon('code')}</button></header>
+        <div class="dg-canvas" data-i="${i}"><p class="dg-wait">${T.mmLoading}</p></div>
+        <div class="dg-code" hidden><button type="button" class="btn copy" data-act="copy" data-i="${i}">${icon('copy')}${T.copy}</button><pre>${esc(String(d.code || '').trim())}</pre></div>
+        ${d.note ? `<figcaption class="dg-note">${md(d.note)}</figcaption>` : ''}
+      </figure>`).join('') : `<p class="empty">${T.empty}</p>`);
+  }
+
+  const refs = (r) => `<span class="refs">${[].concat(r || []).map((n) => `<button type="button" class="num" data-ref="${Number(n)}" title="${esc(T.locate)} ${Number(n)}">${Number(n)}</button>`).join('')}</span>`;
+  function renderEdge() {
+    const known = new Set(CATS);
+    const groups = CATS.map((c) => [c, edgeCases.filter((e) => e.category === c)]);
+    const other = edgeCases.filter((e) => !known.has(e.category));
+    if (other.length) groups.push(['other', other]);
+    let rows = '';
+    groups.forEach(([c, items]) => {
+      rows += `<tr class="cat"><td colspan="4"><span class="cat-dot cat-${c}"></span>${esc(T.cats[c])}${T.catsAlt[c] ? `<small>${esc(T.catsAlt[c])}</small>` : ''}<span class="count">${items.length}</span></td></tr>`;
+      if (!items.length) rows += `<tr class="miss"><td colspan="4">${T.missCat}</td></tr>`;
+      items.forEach((e) => { rows += `<tr><td>${md(e.trigger)}</td><td>${md(e.ui)}</td><td>${md(e.fallback)}</td><td>${refs(e.refs)}</td></tr>`; });
+    });
+    const track = tracking.map((t) => `<tr><td>${esc(t.event)}</td><td>${md(t.trigger)}</td><td>${esc(t.properties)}</td><td>${refs(t.refs)}</td></tr>`).join('');
+    panels.edge.innerHTML = printHead('edge')
+      + `<h3 class="sec-title">${T.edgeTitle[0]}${sub(T.edgeTitle)}</h3><div class="tbl-wrap"><table class="t edge"><thead><tr>${T.edgeCols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`
+      + `<h3 class="sec-title">${T.trackTitle[0]}${sub(T.trackTitle)}</h3>` + (track ? `<div class="tbl-wrap"><table class="t track"><thead><tr>${T.trackCols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${track}</tbody></table></div>` : `<p class="empty">${T.empty}</p>`);
+  }
+
+  /* ---------- mermaid (CDN with fallbacks, rendered once per theme) ---------- */
+  const MM_VARS = {
+    light: { darkMode: false, background: '#FFFFFF', primaryColor: '#EFF6FF', primaryBorderColor: '#2563EB', primaryTextColor: '#0F172A', secondaryColor: '#F1F5F9', secondaryBorderColor: '#94A3B8', secondaryTextColor: '#0F172A', tertiaryColor: '#FFFFFF', tertiaryBorderColor: '#CBD5E1', tertiaryTextColor: '#0F172A', lineColor: '#64748B', textColor: '#334155', noteBkgColor: '#FFFBEB', noteBorderColor: '#F59E0B', noteTextColor: '#78350F', edgeLabelBackground: '#FFFFFF', attributeBackgroundColorOdd: '#FFFFFF', attributeBackgroundColorEven: '#F8FAFC' },
+    dark: { darkMode: true, background: '#1E293B', primaryColor: '#1E3A8A', primaryBorderColor: '#60A5FA', primaryTextColor: '#F1F5F9', secondaryColor: '#334155', secondaryBorderColor: '#64748B', secondaryTextColor: '#F1F5F9', tertiaryColor: '#1E293B', tertiaryBorderColor: '#475569', tertiaryTextColor: '#F1F5F9', lineColor: '#94A3B8', textColor: '#E2E8F0', noteBkgColor: '#422006', noteBorderColor: '#F59E0B', noteTextColor: '#FDE68A', edgeLabelBackground: '#1E293B', attributeBackgroundColorOdd: '#1E293B', attributeBackgroundColorEven: '#0F172A' }
+  };
+  function mermaidSources() {
+    const v = MERMAID_VERSION;
+    const urls = [
+      `https://cdn.jsdelivr.net/npm/mermaid@${v}/dist/mermaid.min.js`,
+      `https://unpkg.com/mermaid@${v}/dist/mermaid.min.js`,
+      `https://registry.npmmirror.com/mermaid/${v}/files/dist/mermaid.min.js`
+    ];
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* no Intl */ }
+    if (/^zh-(CN|Hans)/i.test(navigator.language || '') || /^Asia\/(Shanghai|Chongqing|Harbin|Urumqi)$/.test(tz)) urls.unshift(urls.pop());
+    return urls;
+  }
+  const loadScript = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    const timer = setTimeout(() => { s.remove(); reject(new Error('timeout')); }, 6000);
+    s.src = src; s.async = true;
+    s.onload = () => { clearTimeout(timer); window.mermaid ? resolve() : reject(new Error('no global')); };
+    s.onerror = () => { clearTimeout(timer); s.remove(); reject(new Error('network')); };
+    document.head.appendChild(s);
+  });
+  async function loadMermaid() {
+    if (window.mermaid) return true;
+    for (const src of mermaidSources()) {
+      try { await loadScript(src); return true; } catch (e) { /* try the next CDN */ }
+    }
+    return false;
+  }
+  async function renderDiagrams() {
+    if (!diagrams.length) return;
+    const hosts = $$('.dg-canvas');
+    const ok = await loadMermaid();
+    if (!ok) {
+      hosts.forEach((h) => { h.innerHTML = `<p class="dg-offline">${T.mmOffline}</p>`; h.nextElementSibling.hidden = false; });
+      console.warn('[vibe-prd] Mermaid could not be loaded; showing diagram source instead.');
+      return;
+    }
+    const fontFamily = getComputedStyle(document.body).fontFamily;
+    const failed = new Set();
+    for (const theme of ['light', 'dark']) {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'base', fontFamily, themeVariables: Object.assign({ fontFamily, fontSize: '13px' }, MM_VARS[theme]), flowchart: { curve: 'basis' } });
+      for (let i = 0; i < diagrams.length; i++) {
+        if (failed.has(i)) continue;
+        const id = `vprd-${theme}-${i}-${Date.now().toString(36)}`;
+        try {
+          const out = await window.mermaid.render(id, String(diagrams[i].code || '').trim());
+          hosts[i].insertAdjacentHTML('beforeend', `<div class="svg-${theme}">${out.svg}</div>`);
+        } catch (err) {
+          failed.add(i);
+          const msg = String((err && (err.message || err.str)) || err).split('\n').slice(0, 3).join(' ');
+          hosts[i].insertAdjacentHTML('beforeend', `<div class="dg-error"><b>${T.mmError}</b>${esc(msg)}</div>`);
+          hosts[i].nextElementSibling.hidden = false;
+          console.warn(`[vibe-prd] Mermaid error in "${diagrams[i].title || i}": ${msg}`);
+          ['d' + id, id].forEach((x) => { const n = document.getElementById(x); if (n) n.remove(); });
+        }
+      }
+    }
+    hosts.forEach((h) => { const w = h.querySelector('.dg-wait'); if (w) w.remove(); });
+  }
+
+  /* ---------- prototype frame ---------- */
+  const prototypeHTML = () => { const tpl = $('#vibe-prd-prototype'); return tpl ? tpl.innerHTML.trim() : ''; };
+  function buildFrame() {
+    const runtime = `(${prdRuntime.toString()})(${JSON.stringify({ badges: state.badges, dwell: 420 })});`;
+    frame.srcdoc = `<!DOCTYPE html>\n${prototypeHTML()}\n<script>${runtime}<\/script>\n<!-- vibe-prd ${Date.now()} -->`;
+  }
+  function openPrototype() {
+    const url = URL.createObjectURL(new Blob([`<!DOCTYPE html>\n${prototypeHTML()}`], { type: 'text/html' }));
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  function fitDevice() {
+    const d = isNarrow() ? 'desktop' : state.device;
+    device.dataset.device = d;
+    if (d === 'desktop') { device.style.cssText = ''; return; }
+    const pad = 20, w = DEVICE_W[d];
+    const s = Math.min(1, (canvas.clientWidth - pad * 2) / w);
+    const h = Math.min((canvas.clientHeight - pad * 2) / s, d === 'mobile' ? 812 : 1024);
+    device.style.width = w + 'px';
+    device.style.height = h + 'px';
+    device.style.transform = `scale(${s})`;
+    device.style.left = Math.max(pad, (canvas.clientWidth - w * s) / 2) + 'px';
+    device.style.top = Math.max(pad, (canvas.clientHeight - h * s) / 2) + 'px';
+  }
+
+  /* ---------- state changes ---------- */
+  function setCurrent(id) {
+    state.current = id;
+    $$('.card').forEach((c) => c.classList.toggle('is-current', Number(c.dataset.id) === id));
+    $$('[data-jump]').forEach((b) => b.classList.toggle('is-current', Number(b.dataset.jump) === id));
+  }
+  function switchTab(name) {
+    if (!panels[name] || name === state.tab) return;
+    state.scroll[state.tab] = docBody.scrollTop;
+    state.tab = name;
+    $$('.tab').forEach((b) => { const on = b.dataset.tab === name; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    Object.keys(panels).forEach((k) => { panels[k].hidden = k !== name; });
+    docBody.scrollTop = state.scroll[name] || 0;
+  }
+  function revealCard(id, glow) {
+    setCurrent(id);
+    if (state.tab !== 'notes') switchTab('notes');
+    const card = document.getElementById('annotation-card-' + id);
+    if (!card) return;
+    const pr = docBody.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    if (cr.top < pr.top || cr.bottom > pr.bottom) card.scrollIntoView({ behavior, block: cr.height > pr.height * 0.85 ? 'start' : 'center' });
+    if (glow) { card.classList.remove('is-glow'); void card.offsetWidth; card.classList.add('is-glow'); }
+  }
+  function locate(id, opts = {}) {
+    setCurrent(id);
+    if (opts.pin) { state.pinned = id; post({ type: 'pin', id }); }
+    if (opts.explicit && isNarrow()) setView('proto');
+    post({ type: 'focus', id, flash: true });
+  }
+  function togglePin(id) {
+    state.pinned = state.pinned === id ? null : id;
+    post({ type: 'pin', id: state.pinned });
+    if (state.pinned != null) locate(id);
+  }
+  function setBadges(on) {
+    state.badges = on; store.set('badges', on ? '1' : '0');
+    $('#btn-badges').setAttribute('aria-pressed', String(on));
+    post({ type: 'badges', visible: on });
+  }
+  function setTheme(t) { root.dataset.theme = t; store.set('theme', t); }
+  function setDevice(d) {
+    state.device = DEVICE_W[d] ? d : 'desktop'; store.set('device', state.device);
+    $$('#device-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.device === state.device)));
+    fitDevice();
+  }
+  function setView(v) {
+    app.dataset.view = v;
+    $$('#view-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  }
+  function setSplit(p, save) {
+    state.split = Math.min(75, Math.max(30, p));
+    split.style.setProperty('--left', state.split + '%');
+    splitter.setAttribute('aria-valuenow', String(Math.round(state.split)));
+    fitDevice();
+    if (save) store.set('split', state.split.toFixed(1));
+  }
+  function validate() {
+    const left = new Set((state.ids || []).map(String));
+    const right = new Set(annotations.map((a) => String(a.id)));
+    const issues = [];
+    left.forEach((id) => { if (!right.has(id)) issues.push(fill(T.noCard, id)); });
+    right.forEach((id) => { if (!left.has(id)) issues.push(fill(T.noBadge, id, id)); });
+    $$('.card').forEach((c) => c.classList.toggle('is-orphan', !left.has(c.dataset.id)));
+    const chip = $('#issues');
+    chip.hidden = !issues.length;
+    chip.lastElementChild.textContent = `${issues.length} ${T.issues}`;
+    chip.title = issues.join('\n');
+    console.info(`[vibe-prd] ${left.size} regions, ${right.size} annotations, ${issues.length} issues`);
+    issues.forEach((i) => console.warn('[vibe-prd] ' + i));
+  }
+
+  /* ---------- lightbox ---------- */
+  let lb = { svg: null, natural: 800, zoom: 1 };
+  function zoomTo(z) {
+    lb.zoom = Math.min(4, Math.max(0.25, z));
+    if (lb.svg) lb.svg.style.width = Math.round(lb.natural * lb.zoom) + 'px';
+    $('#lb-zoom').textContent = Math.round(lb.zoom * 100) + '%';
+  }
+  function openLightbox(i) {
+    const host = $$('.dg-canvas')[i];
+    const svg = host && (host.querySelector(`.svg-${root.dataset.theme === 'dark' ? 'dark' : 'light'} svg`) || host.querySelector('svg'));
+    if (!svg) return;
+    const body = $('#lb-body');
+    body.innerHTML = '';
+    const clone = svg.cloneNode(true);
+    clone.removeAttribute('style'); clone.removeAttribute('width'); clone.removeAttribute('height');
+    const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+    lb = { svg: clone, natural: vb[2] || svg.getBoundingClientRect().width || 800, zoom: 1 };
+    body.appendChild(clone);
+    $('#lb-title').textContent = diagrams[i].title || '';
+    lightbox.hidden = false;
+    zoomTo(Math.min(2, (body.clientWidth - 56) / lb.natural));
+    $('#lb-close').focus();
+  }
+  function closeLightbox() { lightbox.hidden = true; $('#lb-body').innerHTML = ''; }
+  async function copyCode(i) {
+    const text = String(diagrams[i].code || '').trim();
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (err) { /* give up quietly */ }
+      ta.remove();
+    }
+    toast(T.copied);
+  }
+
+  /* ---------- events ---------- */
+  let cardTimer = 0, cardHover = null;
+  function bind() {
+    $$('.tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    $('.tabs').addEventListener('keydown', (e) => {
+      const order = ['notes', 'arch', 'edge'];
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      const next = order[(order.indexOf(state.tab) + d + order.length) % order.length];
+      switchTab(next); $('#tab-' + next).focus();
+    });
+    $('#btn-badges').addEventListener('click', () => setBadges(!state.badges));
+    $('#btn-theme').addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+    $('#btn-print').addEventListener('click', () => window.print());
+    $('#btn-reload').addEventListener('click', buildFrame);
+    $('#btn-open').addEventListener('click', openPrototype);
+    $$('#device-seg button').forEach((b) => b.addEventListener('click', () => setDevice(b.dataset.device)));
+    $$('#view-seg button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+
+    docBody.addEventListener('click', (e) => {
+      const t = e.target;
+      const ref = t.closest('[data-ref]');
+      if (ref) { locate(Number(ref.dataset.ref), { pin: true, explicit: true }); return; }
+      const jump = t.closest('[data-jump]');
+      if (jump) { const id = Number(jump.dataset.jump); revealCard(id, true); locate(id); return; }
+      const act = t.closest('[data-act]');
+      if (act) {
+        const a = act.dataset.act, i = Number(act.dataset.i);
+        if (a === 'locate') locate(Number(act.dataset.id), { pin: true, explicit: true });
+        else if (a === 'zoom') openLightbox(i);
+        else if (a === 'copy') copyCode(i);
+        else if (a === 'code') { const box = act.closest('.dg').querySelector('.dg-code'); box.hidden = !box.hidden; act.setAttribute('aria-expanded', String(!box.hidden)); }
+        return;
+      }
+      const head = t.closest('.card-head');
+      if (head) togglePin(Number(head.closest('.card').dataset.id));
+    });
+    docBody.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('card')) locate(Number(e.target.dataset.id), { pin: true, explicit: true });
+    });
+    docBody.addEventListener('mouseover', (e) => {
+      const card = e.target.closest('.card');
+      const id = card ? Number(card.dataset.id) : null;
+      if (id === cardHover) return;
+      clearTimeout(cardTimer);
+      if (cardHover != null) post({ type: 'hover', id: null });
+      cardHover = id;
+      if (id != null && !isNarrow()) cardTimer = setTimeout(() => locate(id), 260);
+    });
+    docBody.addEventListener('mouseleave', () => {
+      clearTimeout(cardTimer);
+      if (cardHover != null) { cardHover = null; post({ type: 'hover', id: null }); }
+    });
+
+    window.addEventListener('message', (e) => {
+      if (e.source !== frame.contentWindow) return;
+      const m = e.data;
+      if (!m || m.__vibePrd !== 1) return;
+      if (m.type === 'ready') {
+        state.ids = m.ids; validate();
+        post({ type: 'badges', visible: state.badges });
+        if (state.pinned != null) post({ type: 'pin', id: state.pinned });
+      } else if (m.type === 'hover') revealCard(m.id, true);
+      else if (m.type === 'click') { revealCard(m.id, true); state.pinned = state.pinned === m.id ? null : m.id; post({ type: 'pin', id: state.pinned }); if (isNarrow()) setView('doc'); }
+      else if (m.type === 'hidden') toast(fill(T.hidden, m.id));
+    });
+
+    splitter.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const rect = split.getBoundingClientRect();
+      app.classList.add('is-dragging');
+      try { splitter.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+      const move = (ev) => setSplit(((ev.clientX - rect.left) / rect.width) * 100);
+      const up = () => {
+        app.classList.remove('is-dragging');
+        splitter.removeEventListener('pointermove', move);
+        splitter.removeEventListener('pointerup', up);
+        splitter.removeEventListener('pointercancel', up);
+        store.set('split', state.split.toFixed(1));
+      };
+      splitter.addEventListener('pointermove', move);
+      splitter.addEventListener('pointerup', up);
+      splitter.addEventListener('pointercancel', up);
+    });
+    splitter.addEventListener('dblclick', () => setSplit(58, true));
+    splitter.addEventListener('keydown', (e) => {
+      const d = { ArrowLeft: -2, ArrowRight: 2 }[e.key];
+      if (d) { e.preventDefault(); setSplit(state.split + d, true); }
+      else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); setSplit(e.key === 'Home' ? 30 : 75, true); }
+    });
+
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox || e.target.closest('#lb-close')) closeLightbox();
+      const z = e.target.closest('[data-zoom]');
+      if (z) zoomTo(lb.zoom * (z.dataset.zoom === '1' ? 1.25 : 0.8));
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!lightbox.hidden) closeLightbox();
+        else if (state.pinned != null) { state.pinned = null; post({ type: 'pin', id: null }); }
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey || !lightbox.hidden) return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (['input', 'textarea', 'select'].includes(tag) || e.target.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === 'b') setBadges(!state.badges);
+      else if (k === 't') setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
+      else if (k === '1' || k === '2' || k === '3') switchTab(['notes', 'arch', 'edge'][Number(k) - 1]);
+      else if (k === ']' || k === '[') {
+        const ids = annotations.map((a) => Number(a.id));
+        if (!ids.length) return;
+        let i = ids.indexOf(state.current);
+        i = i < 0 ? 0 : (i + (k === ']' ? 1 : -1) + ids.length) % ids.length;
+        revealCard(ids[i], true); locate(ids[i]);
+      }
+    });
+    if (window.ResizeObserver) new ResizeObserver(fitDevice).observe(canvas);
+    else window.addEventListener('resize', fitDevice);
+  }
+
+  /* ---------- boot ---------- */
+  chrome();
+  renderNotes();
+  renderArch();
+  renderEdge();
+  $('#btn-badges').setAttribute('aria-pressed', String(state.badges));
+  setSplit(state.split);
+  setDevice(state.device);
+  setView('proto');
+  bind();
+  buildFrame();
+  renderDiagrams();
+  if (!D) console.error('[vibe-prd] window.VIBE_PRD is missing: check the DATA block.');
+})();
+</script>
+</body>
+</html>

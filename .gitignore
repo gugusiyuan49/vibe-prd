@@ -1,0 +1,4 @@
+.DS_Store
+node_modules/
+# local planning notes, not part of the published repo
+VIBE_CODING_PLAN.md

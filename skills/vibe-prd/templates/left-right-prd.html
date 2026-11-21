@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="generator" content="vibe-prd 1.0.0 · https://github.com/gugusiyuan49/vibe-prd">
+<title>PRD Viewer · vibe-prd</title>
+<script>
+  /* Apply the saved or system theme before first paint. */
+  (function () {
+    var t = null;
+    try { t = localStorage.getItem('vibe-prd:theme'); } catch (e) {}
+    if (!t) t = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', t);
+  })();
+</script>
+<style>
+/* =========================================================================
+   vibe-prd · 左图右注 PRD viewer (MIT) · zero build, zero framework
+   ========================================================================= */
+:root {
+  --bg: #F8FAFC; --surface: #FFFFFF; --surface-2: #F1F5F9; --line: #E2E8F0; --line-strong: #CBD5E1;
+  --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --grid-dot: #DCE3EC;
+  --primary: #2563EB; --primary-ink: #1D4ED8; --primary-soft: #EFF6FF; --primary-ring: rgba(37, 99, 235, .28);
+  --mark: #E11D48; --mark-soft: rgba(225, 29, 72, .10); --mark-line: rgba(225, 29, 72, .35);
+  --warn: #B45309; --warn-bg: #FFFBEB; --warn-line: #FDE68A; --warn-ink: #78350F;
+  --ok: #047857; --ok-bg: #ECFDF5; --ok-line: #A7F3D0;
+  --shadow-pop: 0 18px 48px -16px rgba(15, 23, 42, .35);
+  --font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  color-scheme: light;
+}
+[data-theme="dark"] {
+  --bg: #0F172A; --surface: #1E293B; --surface-2: #273449; --line: #334155; --line-strong: #475569;
+  --ink: #F1F5F9; --ink-2: #CBD5E1; --muted: #94A3B8; --grid-dot: #26334A;
+  --primary: #3B82F6; --primary-ink: #60A5FA; --primary-soft: rgba(59, 130, 246, .14); --primary-ring: rgba(96, 165, 250, .35);
+  --mark: #F43F5E; --mark-soft: rgba(244, 63, 94, .14); --mark-line: rgba(244, 63, 94, .45);
+  --warn: #FBBF24; --warn-bg: rgba(245, 158, 11, .10); --warn-line: rgba(245, 158, 11, .35); --warn-ink: #FDE68A;
+  --ok: #34D399; --ok-bg: rgba(16, 185, 129, .12); --ok-line: rgba(16, 185, 129, .35);
+  --shadow-pop: 0 18px 48px -16px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font: 14px/1.6 var(--font); color: var(--ink); background: var(--bg); overflow: hidden;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+button { font: inherit; color: inherit; }
+code { font-family: var(--mono); font-size: .9em; padding: .1em .35em; border-radius: 4px; background: var(--surface-2); color: var(--ink); }
+:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+.print-only { display: none; }
+svg.i { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.app { display: grid; grid-template-rows: 52px minmax(0, 1fr); height: 100vh; height: 100dvh; }
+
+/* ---------- top bar ---------- */
+.topbar { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 0 12px 0 14px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 8px; height: 28px; padding-right: 14px; border-right: 1px solid var(--line); flex: none; color: var(--ink); text-decoration: none; }
+.brand svg { width: 22px; height: 22px; }
+.wordmark { font-weight: 650; font-size: 14px; letter-spacing: -.01em; }
+.doc-meta { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.doc-title { margin: 0; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.chip-ver { font-family: var(--mono); font-size: 11.5px; }
+.chip-status::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chip-status[data-status="review"] { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.chip-status[data-status="approved"] { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-line); }
+.chip-status[data-status="draft"] { color: var(--muted); }
+.spacer { flex: 1; }
+.issues { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--warn-line); background: var(--warn-bg); color: var(--warn); font-size: 12.5px; font-weight: 600; cursor: help; }
+.issues[hidden] { display: none; }
+.actions { display: flex; gap: 6px; flex: none; }
+.btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font-size: 13px; font-weight: 500; cursor: pointer; white-space: nowrap; transition: background .15s, border-color .15s, color .15s; }
+.btn:hover { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink); }
+.btn[aria-pressed="true"] { color: var(--mark); background: var(--mark-soft); border-color: var(--mark-line); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-ink); border-color: var(--primary-ink); color: #fff; }
+.seg { display: inline-flex; flex: none; padding: 2px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); }
+.seg button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 24px; min-width: 30px; padding: 0 8px; border: 0; border-radius: 6px; background: transparent; color: var(--muted); font-size: 12px; cursor: pointer; }
+.seg button:hover { color: var(--ink); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: 0 1px 2px rgba(15, 23, 42, .12); }
+.view-seg { display: none; }
+.icon-btn { display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border: 0; border-radius: 7px; background: transparent; color: var(--muted); cursor: pointer; }
+.icon-btn:hover { background: var(--surface-2); color: var(--ink); }
+
+/* ---------- split ---------- */
+.split { display: grid; grid-template-columns: minmax(0, var(--left, 58%)) 9px minmax(0, 1fr); min-height: 0; }
+.stage { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.browserbar { display: flex; align-items: center; gap: 8px; height: 44px; padding: 0 10px; flex: none; background: var(--surface); border-bottom: 1px solid var(--line); }
+.lights { display: flex; gap: 6px; padding: 0 4px; flex: none; }
+.lights i { width: 10px; height: 10px; border-radius: 50%; background: #F87171; }
+.lights i:nth-child(2) { background: #FBBF24; }
+.lights i:nth-child(3) { background: #34D399; }
+.address { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border-radius: 7px; background: var(--surface-2); color: var(--muted); }
+.address svg.i { width: 13px; height: 13px; }
+.address span { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-family: var(--mono); font-size: 12px; }
+.canvas { position: relative; flex: 1; min-height: 0; overflow: hidden; background-color: var(--bg); background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 18px 18px; }
+.device { position: absolute; inset: 0; background: #fff; transform-origin: 0 0; }
+.device[data-device="tablet"], .device[data-device="mobile"] { inset: auto; overflow: hidden; border-radius: 18px; box-shadow: 0 0 0 1px var(--line-strong), 0 24px 48px -20px rgba(15, 23, 42, .35); }
+.device[data-device="mobile"] { border-radius: 30px; }
+.device iframe { display: block; width: 100%; height: 100%; border: 0; background: #fff; }
+.is-dragging, .is-dragging * { cursor: col-resize !important; user-select: none !important; }
+.is-dragging iframe { pointer-events: none; }
+.splitter { position: relative; background: var(--bg); border-left: 1px solid var(--line); border-right: 1px solid var(--line); cursor: col-resize; touch-action: none; }
+.splitter span { position: absolute; left: 50%; top: 50%; width: 3px; height: 36px; margin: -18px 0 0 -1.5px; border-radius: 3px; background: var(--line-strong); transition: background .15s, height .15s, margin .15s; }
+.splitter:hover span, .splitter:focus-visible span, .is-dragging .splitter span { height: 56px; margin-top: -28px; background: var(--primary); }
+
+/* ---------- document pane ---------- */
+.doc { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--surface); container: doc / inline-size; }
+.tabs { display: flex; gap: 2px; flex: none; padding: 0 12px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; }
+.tabs::-webkit-scrollbar { display: none; }
+.tab { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 46px; padding: 0 10px; border: 0; background: transparent; color: var(--muted); font-size: 13.5px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.tab:hover { color: var(--ink); }
+.tab small { font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.tab[aria-selected="true"] { color: var(--ink); }
+.tab[aria-selected="true"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: -1px; height: 2px; border-radius: 2px; background: var(--primary); }
+.count { display: inline-grid; place-items: center; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--surface-2); color: var(--ink-2); font-size: 11px; font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] .count { background: var(--primary-soft); color: var(--primary); }
+.doc-body { position: relative; flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+.panel { padding: 16px 18px 48px; }
+.panel[hidden] { display: none; }
+.empty, .fatal { margin: 24px 0; color: var(--muted); }
+.fatal { padding: 14px 16px; border-radius: 10px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); }
+
+/* overview + jump chips */
+.overview { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+.overview b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.overview .hi b { color: var(--warn); }
+.jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.jump button { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; height: 28px; padding: 0 10px 0 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); font-size: 12.5px; cursor: pointer; }
+.jump button span:last-child { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 16em; }
+.jump button:hover, .jump button.is-current { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.num { display: inline-grid; place-items: center; flex: none; width: 20px; height: 20px; border-radius: 50%; background: var(--mark); color: #fff; font-size: 11.5px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; border: 0; padding: 0; }
+button.num { cursor: pointer; }
+button.num:hover { box-shadow: 0 0 0 3px var(--mark-soft); }
+
+/* annotation cards */
+.card { position: relative; margin: 0 0 14px; padding: 14px 16px 16px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); scroll-margin: 12px; transition: border-color .2s, box-shadow .25s; }
+.card.is-current { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-ring); }
+.card.is-glow { animation: card-glow 1.5s ease-out; }
+@keyframes card-glow {
+  0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, .55), 0 0 0 3px var(--primary-ring); }
+  55% { box-shadow: 0 0 0 14px rgba(37, 99, 235, 0), 0 0 0 3px var(--primary-ring); }
+  100% { box-shadow: 0 0 0 3px var(--primary-ring); }
+}
+.card-head { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.card-head .num { width: 24px; height: 24px; font-size: 12.5px; margin-top: 1px; }
+.card-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 15.5px; line-height: 1.45; font-weight: 620; }
+.type { flex: none; display: inline-flex; align-items: center; height: 22px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink-2); font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.card-head .icon-btn { margin: -2px -6px 0 -4px; }
+.card-head .icon-btn:hover { color: var(--primary); background: var(--primary-soft); }
+.card-body { margin-left: 34px; }
+.summary { margin: 6px 0 0; color: var(--ink-2); }
+.card-body > .col { min-width: 0; }
+.orphan { display: none; margin: 8px 0 0; font-size: 12.5px; color: var(--warn); }
+.card.is-orphan .orphan { display: block; }
+.block { margin-top: 14px; }
+.block h4 { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; font-size: 13px; font-weight: 600; }
+.block h4 small { font-size: 11.5px; font-weight: 400; color: var(--muted); }
+.rules { margin: 0; padding-left: 1.4em; color: var(--ink-2); }
+.rules li { margin: 3px 0; padding-left: 2px; }
+.rules li::marker { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.formula { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 12px; padding: 9px 12px; border-radius: 8px; background: var(--primary-soft); border: 1px solid var(--primary-ring); }
+.formula > span { font-size: 12px; font-weight: 600; color: var(--primary); }
+.formula code { padding: 0; background: none; font-size: 12.5px; color: var(--ink); white-space: pre-wrap; }
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; }
+table.t { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.t th { padding: 7px 10px; background: var(--surface-2); color: var(--muted); font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
+.t td { padding: 7px 10px; border-top: 1px solid var(--line); color: var(--ink-2); vertical-align: top; }
+.t td code { font-size: 11.5px; }
+.spec td:first-child { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+.spec td:first-child code { padding: 0; background: none; }
+.guards { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.g { display: grid; grid-template-columns: auto 1fr; gap: 10px; padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); border: 1px solid var(--warn-line); }
+.g p { margin: 0; color: var(--ink-2); }
+.g .fix { margin-top: 4px; color: var(--ink); }
+.g .fix b { color: var(--warn); font-weight: 600; }
+.lvl { display: inline-grid; place-items: center; height: 20px; padding: 0 7px; border-radius: 5px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.lvl-high { background: var(--warn); color: #fff; }
+[data-theme="dark"] .lvl-high { color: #1E293B; }
+.lvl-medium { background: var(--warn-line); color: var(--warn-ink); }
+.lvl-low { background: var(--surface-2); color: var(--muted); }
+
+/* diagrams */
+.dg { margin: 0 0 16px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--surface); }
+.dg-head { display: flex; align-items: center; gap: 8px; padding: 9px 10px 9px 14px; border-bottom: 1px solid var(--line); }
+.dg-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
+.kind { flex: none; height: 22px; padding: 0 8px; border-radius: 6px; display: inline-flex; align-items: center; font-size: 11.5px; font-weight: 600; background: var(--primary-soft); color: var(--primary); }
+.dg-canvas { min-height: 120px; padding: 18px; overflow: auto; background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 16px 16px; }
+.dg-canvas > div { display: flex; justify-content: center; }
+.dg-canvas svg { max-width: 100%; height: auto; }
+.svg-dark { display: none !important; }
+[data-theme="dark"] .svg-dark { display: flex !important; }
+[data-theme="dark"] .svg-light { display: none !important; }
+.dg-wait, .dg-offline { margin: 0; color: var(--muted); font-size: 12.5px; }
+.dg-error { padding: 10px 12px; border-radius: 8px; background: var(--warn-bg); border: 1px solid var(--warn-line); color: var(--warn-ink); font-size: 12.5px; }
+.dg-code { position: relative; margin: 0; border-top: 1px solid var(--line); background: var(--surface-2); }
+.dg-code pre { margin: 0; padding: 12px 14px; max-height: 340px; overflow: auto; font: 12px/1.6 var(--mono); color: var(--ink-2); white-space: pre; }
+.dg-code .copy { position: absolute; top: 8px; right: 8px; height: 26px; padding: 0 9px; font-size: 12px; }
+.dg-note { margin: 0; padding: 9px 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12.5px; }
+
+/* edge cases + tracking */
+.sec-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 8px; margin: 4px 0 10px; font-size: 15px; font-weight: 620; }
+.sec-title small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.sec-title + .tbl-wrap { margin-bottom: 26px; }
+.edge td:nth-child(4), .track td:nth-child(4) { white-space: nowrap; }
+.edge .cat td { background: var(--surface-2); color: var(--ink); font-weight: 600; }
+.edge .cat small { margin-left: 6px; font-weight: 400; color: var(--muted); }
+.edge .cat .count { margin-left: 8px; background: var(--surface); }
+.cat-dot { display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; vertical-align: 1px; }
+.cat-empty { background: #64748B; } .cat-boundary { background: #7C3AED; } .cat-network { background: #0284C7; }
+.cat-concurrency { background: #D97706; } .cat-permission { background: #059669; } .cat-other { background: var(--line-strong); }
+.edge .miss td { color: var(--warn); font-size: 12px; }
+.track td:first-child { font-family: var(--mono); font-size: 12px; color: var(--ink); white-space: nowrap; }
+.track td:nth-child(3) { font-family: var(--mono); font-size: 11.5px; }
+.refs { display: inline-flex; gap: 4px; }
+.refs .num { width: 18px; height: 18px; font-size: 10.5px; }
+
+/* lightbox + toast */
+.lightbox { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 24px; background: rgba(15, 23, 42, .55); }
+.lightbox[hidden] { display: none; }
+.lb { display: flex; flex-direction: column; width: min(1200px, 100%); height: min(88vh, 940px); border-radius: 14px; overflow: hidden; background: var(--surface); box-shadow: var(--shadow-pop); }
+.lb-head { display: flex; align-items: center; gap: 8px; padding: 10px 12px 10px 16px; border-bottom: 1px solid var(--line); }
+.lb-head h3 { flex: 1; min-width: 0; margin: 0; font-size: 14px; font-weight: 600; }
+.lb-zoom { min-width: 46px; text-align: center; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.lb-body { flex: 1; min-height: 0; overflow: auto; padding: 28px; background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px); background-size: 18px 18px; }
+.lb-body svg { display: block; margin: 0 auto; max-width: none !important; height: auto; }
+.toast { position: fixed; left: 50%; bottom: 24px; z-index: 50; max-width: min(520px, calc(100vw - 32px)); padding: 9px 14px; border-radius: 9px; background: var(--ink); color: var(--surface); font-size: 13px; box-shadow: var(--shadow-pop); opacity: 0; transform: translate(-50%, 12px); pointer-events: none; transition: opacity .2s, transform .2s; }
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* narrow document pane */
+@container doc (max-width: 720px) {
+  .tab small { display: none; }
+}
+@container doc (max-width: 560px) {
+  .card-body { margin-left: 0; }
+  .panel { padding: 14px 14px 40px; }
+}
+
+/* phones & small tablets: one pane at a time */
+@media (max-width: 900px) {
+  .topbar { gap: 8px; padding: 0 8px 0 10px; }
+  .brand { padding-right: 10px; }
+  .wordmark, .chip-ver, .actions .btn span, .lights, .device-seg, #btn-open { display: none; }
+  .actions .btn { width: 34px; padding: 0; justify-content: center; }
+  .view-seg { display: inline-flex; }
+  .split { display: block; position: relative; }
+  .stage, .doc { position: absolute; inset: 0; }
+  .splitter { display: none; }
+  .app[data-view="proto"] .doc, .app[data-view="doc"] .stage { visibility: hidden; pointer-events: none; }
+}
+@media (max-width: 520px) {
+  .chip-status, #btn-print, .issues { display: none; }
+  .doc-title { font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+/* print: A4 landscape, every panel expanded */
+@page { size: A4 landscape; margin: 9mm 10mm; }
+@media print {
+  :root, [data-theme="dark"] {
+    --bg: #FFFFFF; --surface: #FFFFFF; --surface-2: #F1F5F9; --line: #D5DDE7; --line-strong: #CBD5E1;
+    --ink: #0F172A; --ink-2: #334155; --muted: #64748B; --grid-dot: #FFFFFF;
+    --primary: #2563EB; --primary-soft: #EFF6FF; --primary-ring: rgba(37, 99, 235, .28);
+    --mark: #E11D48; --warn: #B45309; --warn-bg: #FFFBEB; --warn-line: #FDE68A; --warn-ink: #78350F;
+    color-scheme: light;
+  }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  html, body { height: auto !important; overflow: visible !important; background: #fff !important; }
+  .app { display: block; height: auto; }
+  .topbar { height: auto; padding: 0 0 8px; margin-bottom: 8px; border-bottom: 2px solid #0F172A; }
+  .actions, .view-seg, .issues, .splitter, .tabs, .jump, .card-head .icon-btn, .dg-head .icon-btn, .browserbar .icon-btn, .device-seg, .toast, .lightbox { display: none !important; }
+  .print-only { display: block !important; }
+  .print-meta { margin: 0 0 8px; color: #64748B; font-size: 11px; }
+  .split { display: block; }
+  .stage { height: 160mm; border: 1px solid #CBD5E1; border-radius: 8px; overflow: hidden; break-after: page; }
+  .device { position: absolute !important; inset: 0 !important; width: auto !important; height: auto !important; transform: none !important; border-radius: 0 !important; box-shadow: none !important; }
+  .doc { display: block; }
+  .doc-body { overflow: visible !important; }
+  .panel { display: block !important; padding: 0 0 6mm !important; }
+  .panel + .panel { break-before: page; }
+  .panel > h2.print-only { margin: 0 0 4mm; font-size: 17px; }
+  .panel > h2 small { font-size: 12px; font-weight: 400; color: #64748B; }
+  .card { margin: 0 0 5mm !important; break-inside: auto; border-color: #CBD5E1 !important; box-shadow: none !important; animation: none !important; }
+  .card-body { margin-left: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 0 7mm; align-items: start; }
+  .card-body > .summary, .card-body > .orphan, .card-body > .block { grid-column: 1 / -1; }
+  .guards { grid-template-columns: 1fr 1fr; }
+  .card-head, .block h4 { break-after: avoid; }
+  .g, tr, .formula, .rules li { break-inside: avoid; }
+  #panel-arch { display: grid !important; grid-template-columns: 1fr 1fr; gap: 5mm; align-items: start; }
+  #panel-arch > h2 { grid-column: 1 / -1; }
+  .dg { margin: 0 !important; break-inside: avoid; }
+  .dg-canvas { background: none; padding: 8px; }
+  .dg-canvas svg { max-height: 150mm; width: auto; }
+  .svg-dark { display: none !important; }
+  .svg-light { display: flex !important; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<!--
+  vibe-prd · left-right-prd.html — 左图右注 interactive PRD viewer (MIT)
+  To fill it (agents: SKILL.md, Mode B, step B6):
+    1. Paste the prototype HTML, with data-prd-badge="N" on each region, between the PROTOTYPE markers.
+    2. Put window.VIBE_PRD = { ... } between the DATA markers.
+  Everything else is the viewer. Leave it as it is.
+-->
+<div class="app" id="app" data-view="proto">
+  <header class="topbar">
+    <a class="brand" href="https://github.com/gugusiyuan49/vibe-prd" target="_blank" rel="noopener" title="Made with vibe-prd">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="1.8" y="3.2" width="20.4" height="17.6" rx="4" fill="none" stroke="currentColor" stroke-width="1.6"/>
+        <rect x="4" y="5.6" width="8.4" height="12.8" rx="1.8" fill="#2563EB"/>
+        <path d="M15 9h4.6M15 12.2h4.6M15 15.4h3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+        <circle cx="12.4" cy="5.6" r="2.7" fill="#E11D48" stroke="#fff" stroke-width="1.2"/>
+      </svg>
+      <span class="wordmark">vibe-prd</span>
+    </a>
+    <div class="doc-meta">
+      <h1 class="doc-title" id="doc-title">PRD</h1>
+      <span class="chip chip-ver" id="doc-version">v1.0.0</span>
+      <span class="chip chip-status" id="doc-status" data-status="review"></span>
+    </div>
+    <div class="spacer"></div>
+    <div class="seg view-seg" id="view-seg">
+      <button type="button" data-view="proto" aria-pressed="true" data-i18n="viewProto"></button>
+      <button type="button" data-view="doc" aria-pressed="false" data-i18n="viewDoc"></button>
+    </div>
+    <span class="issues" id="issues" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5M12 17.2v.3"/></svg><span>0</span></span>
+    <div class="actions">
+      <button type="button" class="btn" id="btn-badges" aria-pressed="true" data-icon="target" data-i18n-title="badgesTip"><span data-i18n="badges"></span></button>
+      <button type="button" class="btn" id="btn-theme" data-icon="contrast" data-i18n-title="themeTip"><span data-i18n="theme"></span></button>
+      <button type="button" class="btn btn-primary" id="btn-print" data-icon="printer" data-i18n-title="printTip"><span data-i18n="print"></span></button>
+    </div>
+  </header>
+  <p class="print-only print-meta" id="print-meta"></p>
+
+  <main class="split" id="split">
+    <section class="stage" aria-label="Prototype">
+      <div class="browserbar">
+        <span class="lights" aria-hidden="true"><i></i><i></i><i></i></span>
+        <button type="button" class="icon-btn" id="btn-reload" data-icon="reload" data-i18n-title="reload"></button>
+        <div class="address"><svg class="i" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span id="addr">prototype.html</span></div>
+        <div class="seg device-seg" id="device-seg">
+          <button type="button" data-device="desktop" data-icon="monitor" data-i18n-title="desktop"></button>
+          <button type="button" data-device="tablet" data-icon="tablet" data-i18n-title="tablet"></button>
+          <button type="button" data-device="mobile" data-icon="phone" data-i18n-title="mobile"></button>
+        </div>
+        <button type="button" class="icon-btn" id="btn-open" data-icon="external" data-i18n-title="openNew"></button>
+      </div>
+      <div class="canvas" id="canvas">
+        <div class="device" id="device" data-device="desktop">
+          <iframe id="proto-frame" title="Prototype"></iframe>
+        </div>
+      </div>
+    </section>
+
+    <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" tabindex="0" aria-valuemin="30" aria-valuemax="75" aria-valuenow="58" data-i18n-title="splitter"><span></span></div>
+
+    <section class="doc" aria-label="PRD">
+      <nav class="tabs" role="tablist">
+        <button type="button" class="tab" role="tab" id="tab-notes" data-tab="notes" aria-controls="panel-notes" aria-selected="true"></button>
+        <button type="button" class="tab" role="tab" id="tab-arch" data-tab="arch" aria-controls="panel-arch" aria-selected="false" tabindex="-1"></button>
+        <button type="button" class="tab" role="tab" id="tab-edge" data-tab="edge" aria-controls="panel-edge" aria-selected="false" tabindex="-1"></button>
+      </nav>
+      <div class="doc-body" id="doc-body">
+        <section class="panel" id="panel-notes" role="tabpanel" aria-labelledby="tab-notes"></section>
+        <section class="panel" id="panel-arch" role="tabpanel" aria-labelledby="tab-arch" hidden></section>
+        <section class="panel" id="panel-edge" role="tabpanel" aria-labelledby="tab-edge" hidden></section>
+      </div>
+    </section>
+  </main>
+</div>
+
+<div class="lightbox" id="lightbox" hidden>
+  <div class="lb" role="dialog" aria-modal="true" aria-labelledby="lb-title">
+    <div class="lb-head">
+      <h3 id="lb-title"></h3>
+      <button type="button" class="icon-btn" data-zoom="-1" data-icon="minus"></button>
+      <span class="lb-zoom" id="lb-zoom">100%</span>
+      <button type="button" class="icon-btn" data-zoom="1" data-icon="plus"></button>
+      <button type="button" class="icon-btn" id="lb-close" data-icon="close" data-i18n-title="close"></button>
+    </div>
+    <div class="lb-body" id="lb-body"></div>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<template id="vibe-prd-prototype">
+<!-- VIBE-PRD:PROTOTYPE:BEGIN -->
+<meta charset="utf-8">
+<title>Upgrade · Acme Cloud</title>
+<style>
+  :root { --brand: #4F46E5; --ink: #111827; --muted: #6B7280; --line: #E5E7EB; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: #F9FAFB; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 28px 20px 64px; }
+  h1 { margin: 0 0 4px; font-size: 22px; } .sub { margin: 0 0 20px; color: var(--muted); }
+  .grid { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; align-items: start; }
+  .panel { padding: 16px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .panel + .panel { margin-top: 16px; }
+  .head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .plan { padding: 12px; border: 1.5px solid var(--line); border-radius: 10px; cursor: pointer; }
+  .plan.on { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(79, 70, 229, .15); }
+  .plan b { display: block; } .price { font-size: 20px; font-weight: 700; } .per { color: var(--muted); font-size: 12px; }
+  label { display: block; margin: 12px 0 4px; font-size: 12.5px; color: var(--muted); }
+  input[type=email], input[type=number], input[type=text] { width: 100%; height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; font: inherit; }
+  .row { display: flex; gap: 8px; } .row input { flex: 1; }
+  .btn { height: 36px; padding: 0 14px; border: 1px solid var(--line); border-radius: 8px; background: #fff; font: inherit; cursor: pointer; }
+  .pay { width: 100%; height: 42px; margin-top: 14px; border: 0; background: var(--brand); color: #fff; font-weight: 600; }
+  .pay:disabled { opacity: .45; cursor: not-allowed; }
+  .line { display: flex; justify-content: space-between; padding: 6px 0; color: var(--muted); }
+  .total { margin-top: 6px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--ink); font-size: 16px; font-weight: 700; }
+  .msg { min-height: 18px; margin-top: 6px; font-size: 12.5px; } .ok { color: #047857; } .err { color: #B91C1C; }
+  @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } .plans { grid-template-columns: 1fr; } }
+</style>
+<div class="wrap">
+  <h1>Upgrade your workspace</h1>
+  <p class="sub">Pick a plan. You can change it any time.</p>
+  <div class="grid">
+    <div>
+      <section class="panel" data-prd-badge="1">
+        <div class="head"><b>Plan</b><label style="margin:0"><input type="checkbox" id="yearly"> Yearly, 2 months free</label></div>
+        <div class="plans" id="plans">
+          <div class="plan on" data-plan="starter" data-price="8"><b>Starter</b><span class="price">$8</span> <span class="per">/ seat / mo</span></div>
+          <div class="plan" data-plan="pro" data-price="16"><b>Pro</b><span class="price">$16</span> <span class="per">/ seat / mo</span></div>
+          <div class="plan" data-plan="team" data-price="29"><b>Team</b><span class="price">$29</span> <span class="per">/ seat / mo</span></div>
+        </div>
+      </section>
+      <section class="panel" data-prd-badge="2">
+        <b>Billing details</b>
+        <label for="email">Work email</label><input id="email" type="email" placeholder="you@company.com">
+        <label for="seats">Seats</label><input id="seats" type="number" value="5">
+        <label for="coupon">Coupon</label>
+        <div class="row"><input id="coupon" type="text" placeholder="Try VIBE20"><button class="btn" id="apply" type="button">Apply</button></div>
+        <div class="msg" id="coupon-msg"></div>
+      </section>
+    </div>
+    <aside class="panel" data-prd-badge="3">
+      <b>Order summary</b>
+      <div class="line"><span id="sum-plan">Starter × 5</span><span id="sum-sub">$40.00</span></div>
+      <div class="line"><span>Discount</span><span id="sum-disc">−$0.00</span></div>
+      <div class="line total"><span>Total per month</span><span id="sum-total">$40.00</span></div>
+      <button class="btn pay" id="pay" type="button" disabled>Pay $40.00</button>
+      <div class="msg" id="pay-msg"></div>
+    </aside>
+  </div>
+</div>
+<script>
+(function () {
+  var plan = 'Starter', price = 8, discount = 0;
+  var $ = function (id) { return document.getElementById(id); };
+  function money(n) { return '$' + n.toFixed(2); }
+  function render() {
+    var seats = parseInt($('seats').value, 10) || 0;
+    var unit = $('yearly').checked ? price * 10 / 12 : price;
+    var sub = unit * seats, disc = sub * discount, total = sub - disc;
+    $('sum-plan').textContent = plan + ' × ' + seats;
+    $('sum-sub').textContent = money(sub);
+    $('sum-disc').textContent = '−' + money(disc);
+    $('sum-total').textContent = money(total);
+    $('pay').textContent = 'Pay ' + money(total);
+    $('pay').disabled = !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test($('email').value);
+  }
+  document.querySelectorAll('.plan').forEach(function (el) {
+    el.addEventListener('click', function () {
+      document.querySelectorAll('.plan').forEach(function (p) { p.classList.remove('on'); });
+      el.classList.add('on'); plan = el.querySelector('b').textContent; price = +el.dataset.price; render();
+    });
+  });
+  ['seats', 'email', 'yearly'].forEach(function (id) { $(id).addEventListener('input', render); });
+  $('apply').addEventListener('click', function () {
+    var ok = $('coupon').value.trim().toUpperCase() === 'VIBE20';
+    discount = ok ? 0.2 : 0;
+    $('coupon-msg').className = 'msg ' + (ok ? 'ok' : 'err');
+    $('coupon-msg').textContent = ok ? 'VIBE20 applied: 20% off.' : 'This code is not valid.';
+    render();
+  });
+  $('pay').addEventListener('click', function () {
+    $('pay').textContent = 'Processing…';
+    setTimeout(function () { $('pay-msg').className = 'msg ok'; $('pay-msg').textContent = 'Payment received. Welcome aboard!'; render(); }, 900);
+  });
+  render();
+})();
+</script>
+<!-- VIBE-PRD:PROTOTYPE:END -->
+</template>
+
+<script id="vibe-prd-data">
+/* VIBE-PRD:DATA:BEGIN */
+window.VIBE_PRD = {
+  meta: {
+    title: "Checkout: plan upgrade",
+    lang: "en",
+    version: "v0.3.0",
+    status: "review",
+    updated: "2026-11-21",
+    source: "checkout.html",
+    url: "app.acme.dev/billing/upgrade"
+  },
+  annotations: [
+    {
+      id: 1,
+      title: "Plan picker",
+      type: "Selector",
+      summary: "Lets a workspace admin compare three plans and switch between monthly and yearly billing.",
+      rules: [
+        "Clicking a card selects that plan. Exactly one plan is selected; **Starter** is the default.",
+        "**Yearly** bills 10 months for 12, so the shown monthly price is `price × 10 ÷ 12`.",
+        "Any change re-prices the order summary ③ at once (`render()`)."
+      ],
+      formula: { label: "Monthly equivalent (yearly)", expr: "unit = price × 10 ÷ 12, rounded to cents" },
+      fields: [
+        { name: "plan", type: "enum: Starter | Pro | Team", source: "Card `data-plan`", required: "Required, default Starter" },
+        { name: "price", type: "USD per seat per month", source: "Card `data-price` (8 / 16 / 29)", required: "Read-only" },
+        { name: "yearly", type: "boolean", source: "Checkbox `#yearly`", required: "Default false" }
+      ],
+      guardrails: [
+        { level: "medium", text: "Prices are hard-coded in the markup (`data-price`), so a price change needs a deploy and old tabs keep charging the old price.", fix: "Load plans from GET /plans and re-check the price on the server at payment time." }
+      ]
+    },
+    {
+      id: 2,
+      title: "Billing details",
+      type: "Form",
+      summary: "Collects the billing email, the number of seats and an optional coupon.",
+      rules: [
+        "The email must look like `name@domain.tld` before **Pay** unlocks.",
+        "Seats re-price the summary on every keystroke.",
+        "**Apply** accepts the code `VIBE20` (20% off) and shows an inline success or error message."
+      ],
+      fields: [
+        { name: "email", type: "string, email", source: "Input `#email`", required: "Required" },
+        { name: "seats", type: "integer", source: "Input `#seats`", required: "Required, default 5" },
+        { name: "coupon", type: "string", source: "Input `#coupon`", required: "Optional" }
+      ],
+      guardrails: [
+        { level: "high", text: "`#seats` accepts 0, negative numbers and 100,000; the total goes to $0.00 or negative.", fix: "Clamp seats to 1–500 in the input and reject other values on the server." },
+        { level: "medium", text: "The coupon is checked in the browser, and `VIBE20` is visible in the page source.", fix: "Verify codes with POST /coupons/verify and rate-limit it per user." }
+      ]
+    },
+    {
+      id: 3,
+      title: "Order summary and payment",
+      type: "Action Group",
+      summary: "Shows the live total and takes the payment.",
+      rules: [
+        "Lines update after every change in ① or ②.",
+        "**Pay** stays disabled until the email is valid.",
+        "Clicking **Pay** shows “Processing…”, then a success message after the charge."
+      ],
+      formula: { label: "Total per month", expr: "total = unit × seats × (1 − discount)" },
+      fields: [
+        { name: "subtotal", type: "USD, 2 decimals", source: "unit × seats", required: "Computed" },
+        { name: "discount", type: "USD, 2 decimals", source: "subtotal × coupon rate", required: "Computed, default 0" },
+        { name: "total", type: "USD, 2 decimals", source: "subtotal − discount", required: "Computed" }
+      ],
+      guardrails: [
+        { level: "high", text: "**Pay** stays clickable while `pay()` runs, so a double click charges twice.", fix: "Disable the button on click and send an `Idempotency-Key` with the charge request." },
+        { level: "low", text: "No failure state: a declined card would still show “Processing…”.", fix: "Show the decline reason inline and keep the form filled." }
+      ]
+    }
+  ],
+  diagrams: [
+    {
+      title: "Subscription lifecycle",
+      kind: "state",
+      note: "Every non-final state has a way out; a failed renewal gets 3 retries before suspension.",
+      code: `stateDiagram-v2
+    state "Checkout" as CHECKOUT
+    state "Active" as ACTIVE
+    state "Past due" as PAST_DUE
+    state "Suspended" as SUSPENDED
+    state "Cancelled" as CANCELLED
+    [*] --> CHECKOUT
+    CHECKOUT --> ACTIVE : payment succeeded
+    CHECKOUT --> [*] : abandoned
+    ACTIVE --> PAST_DUE : renewal failed
+    PAST_DUE --> ACTIVE : retry succeeded
+    PAST_DUE --> SUSPENDED : 3 retries failed
+    SUSPENDED --> ACTIVE : card updated
+    ACTIVE --> CANCELLED : admin cancels
+    CANCELLED --> [*]`
+    },
+    {
+      title: "Checkout flow",
+      kind: "flow",
+      code: `flowchart TD
+    A["Pick a plan ①"] --> B["Enter billing details ②"]
+    B --> C{"Email valid?"}
+    C -- no --> B
+    C -- yes --> D["Pay ③"]
+    D --> E{"Card accepted?"}
+    E -- yes --> F["Active subscription"]
+    E -- no --> G["Show decline reason"]
+    G --> D`
+    }
+  ],
+  edgeCases: [
+    { category: "empty", trigger: "First visit, no plan chosen yet", ui: "Starter is pre-selected and the summary shows its price", fallback: "Server defaults to Starter if plan is missing", refs: [1] },
+    { category: "empty", trigger: "Coupon field submitted empty", ui: "Apply does nothing and shows no error", fallback: "No request is sent", refs: [2] },
+    { category: "boundary", trigger: "Seats set to 0, negative or above 500", ui: "Inline error “Seats must be between 1 and 500”", fallback: "API rejects with 422", refs: [2] },
+    { category: "boundary", trigger: "Email with spaces or 255+ characters", ui: "Inline error under the field", fallback: "Server validates RFC 5321 length", refs: [2] },
+    { category: "network", trigger: "Charge request takes over 3 s", ui: "Button shows a spinner and stays disabled", fallback: "Client timeout at 15 s, then poll GET /payments/:id", refs: [3] },
+    { category: "network", trigger: "Double click on Pay", ui: "Second click is ignored", fallback: "Same Idempotency-Key returns the first result", refs: [3] },
+    { category: "concurrency", trigger: "Two admins upgrade the same workspace at once", ui: "Second admin sees “This workspace was just upgraded”", fallback: "Unique open checkout per workspace; 409 for the second", refs: [3] },
+    { category: "concurrency", trigger: "Price changed after the page loaded", ui: "Banner “Prices were updated” and the new total", fallback: "Charge uses the server price, never the client total", refs: [1, 3] },
+    { category: "permission", trigger: "Member without billing rights opens the page", ui: "Read-only view with “Ask an admin to upgrade”", fallback: "403 on POST /checkout", refs: [3] },
+    { category: "permission", trigger: "Session expires during checkout", ui: "Sign-in modal keeps the form filled", fallback: "401, then resume the same checkout id", refs: [2, 3] }
+  ],
+  tracking: [
+    { event: "plan_select", trigger: "Click a plan card", properties: "plan, yearly", refs: [1] },
+    { event: "coupon_apply", trigger: "Click Apply", properties: "code_valid, discount_rate", refs: [2] },
+    { event: "checkout_pay_click", trigger: "Click Pay", properties: "plan, seats, total, yearly", refs: [3] },
+    { event: "checkout_result", trigger: "Charge returns", properties: "status, decline_code, latency_ms", refs: [3] }
+  ]
+};
+/* VIBE-PRD:DATA:END */
+</script>
+
+<script id="vibe-prd-viewer">
+(() => {
+  'use strict';
+
+  /* ---------- runtime injected into the prototype iframe ---------- */
+  function prdRuntime(cfg) {
+    if (window.__vibePrd) return;
+    window.__vibePrd = true;
+    var ATTR = 'data-prd-badge';
+    var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var css = [
+      '#vibe-prd-layer{position:fixed;inset:0;pointer-events:none;z-index:2147483000}',
+      '#vibe-prd-layer.is-off{display:none}',
+      '.vibe-prd-badge{all:unset;box-sizing:border-box;position:absolute;width:22px;height:22px;border-radius:50%;background:#E11D48;color:#fff;border:2px solid #fff;font:700 11.5px/18px system-ui,-apple-system,"Segoe UI",sans-serif;text-align:center;font-variant-numeric:tabular-nums;cursor:pointer;pointer-events:auto;box-shadow:0 2px 8px rgba(225,29,72,.45);transition:transform .16s ease,opacity .2s,box-shadow .2s}',
+      '.vibe-prd-badge[hidden]{display:none}',
+      '.vibe-prd-badge::before{content:"";position:absolute;inset:-2px;border-radius:50%;border:2px solid #E11D48;animation:vibe-prd-ping 2.2s cubic-bezier(0,0,.2,1) infinite;pointer-events:none}',
+      '@keyframes vibe-prd-ping{0%{transform:scale(1);opacity:.6}75%,100%{transform:scale(2.1);opacity:0}}',
+      '.vibe-prd-badge:focus-visible{outline:2px solid #2563EB;outline-offset:2px}',
+      '.vibe-prd-badge.is-active{transform:scale(1.28);box-shadow:0 0 0 4px rgba(225,29,72,.22),0 4px 14px rgba(225,29,72,.5)}',
+      '.vibe-prd-badge.is-under{opacity:.3;pointer-events:none}',
+      '.vibe-prd-badge.is-flash{animation:vibe-prd-bounce .42s ease-in-out 3}',
+      '@keyframes vibe-prd-bounce{0%,100%{transform:scale(1.28)}50%{transform:scale(1.75)}}',
+      '[data-prd-badge]{scroll-margin:72px 0 24px}',
+      '.vibe-prd-outline{outline:2px dashed #E11D48!important;outline-offset:3px!important}',
+      '.vibe-prd-flash{animation:vibe-prd-halo .5s ease-in-out 3!important}',
+      '@keyframes vibe-prd-halo{0%,100%{box-shadow:0 0 0 0 rgba(225,29,72,0)}50%{box-shadow:0 0 0 7px rgba(225,29,72,.2)}}',
+      '@media (prefers-reduced-motion:reduce){.vibe-prd-badge::before{animation:none}.vibe-prd-flash,.vibe-prd-badge.is-flash{animation:none!important}}'
+    ].join('\n');
+    var layer, badges = new Map(), visible = cfg.badges !== false;
+    var hoverId = null, pinId = null, regionId = null, dwellTimer = 0, lastIds = '', until = 0, raf = 0;
+
+    function send(msg) { msg.__vibePrd = 1; try { parent.postMessage(msg, '*'); } catch (e) {} }
+    function idOf(el) { return String(el.getAttribute(ATTR)).trim(); }
+    function regions(id) {
+      var all = Array.prototype.slice.call(document.querySelectorAll('[' + ATTR + ']'));
+      return id == null ? all : all.filter(function (el) { return idOf(el) === String(id); });
+    }
+    function box(el) {
+      var r = el.getBoundingClientRect();
+      if (r.width < 1 && r.height < 1) return null;
+      var cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || Number(cs.opacity) === 0) return null;
+      return r;
+    }
+    function topAt(x, y) {
+      var list = document.elementsFromPoint ? document.elementsFromPoint(x, y) : [];
+      for (var i = 0; i < list.length; i++) if (!layer.contains(list[i])) return list[i];
+      return null;
+    }
+    function kick(ms) { until = Math.max(until, performance.now() + (ms || 0)); if (!raf) raf = requestAnimationFrame(tick); }
+    function tick() { raf = 0; layout(); if (performance.now() < until) raf = requestAnimationFrame(tick); }
+
+    function makeBadge(id) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'vibe-prd-badge'; b.textContent = id; b.dataset.id = id;
+      b.setAttribute('aria-label', 'PRD ' + id);
+      b.addEventListener('mouseenter', function () { setHover(id); send({ type: 'hover', id: Number(id), via: 'badge' }); });
+      b.addEventListener('mouseleave', function () { setHover(regionId); send({ type: 'leave', id: Number(id) }); });
+      b.addEventListener('focus', function () { setHover(id); send({ type: 'hover', id: Number(id), via: 'badge' }); });
+      b.addEventListener('blur', function () { setHover(null); });
+      b.addEventListener('click', function (e) { e.preventDefault(); e.stopPropagation(); send({ type: 'click', id: Number(id) }); });
+      layer.appendChild(b);
+      return b;
+    }
+
+    function layout() {
+      var W = innerWidth, H = innerHeight, seen = new Set(), ids = [];
+      regions().forEach(function (el) {
+        var id = idOf(el);
+        if (ids.indexOf(id) < 0) ids.push(id);
+        var b = badges.get(el);
+        if (!b) { b = makeBadge(id); badges.set(el, b); }
+        seen.add(el);
+        var r = visible ? box(el) : null;
+        if (!r || r.bottom < 6 || r.top > H - 6 || r.right < 6 || r.left > W - 6) { b.hidden = true; return; }
+        var x = Math.min(Math.max(r.right - 11, 13), W - 13);
+        var y = Math.min(Math.max(r.top + 1, 13), Math.max(13, r.bottom - 13), H - 13);
+        var hit = topAt(Math.min(Math.max(r.right - 6, 1), W - 2), Math.min(Math.max(r.top + 6, 1), H - 2));
+        var under = !!hit && hit !== el && !el.contains(hit);
+        if (under && Math.min(r.bottom, H) - Math.max(r.top, 0) < 64) { b.hidden = true; return; }
+        b.hidden = false;
+        b.style.left = (x - 11) + 'px';
+        b.style.top = (y - 11) + 'px';
+        b.classList.toggle('is-under', under);
+      });
+      badges.forEach(function (b, el) { if (!seen.has(el)) { b.remove(); badges.delete(el); } });
+      ids.sort(function (a, c) { return Number(a) - Number(c); });
+      var key = ids.join(',');
+      if (key !== lastIds) { lastIds = key; send({ type: 'ready', ids: ids.map(Number) }); }
+    }
+
+    function paint() {
+      regions().forEach(function (el) {
+        var id = idOf(el);
+        el.classList.toggle('vibe-prd-outline', id === hoverId || id === pinId);
+      });
+      badges.forEach(function (b) { b.classList.toggle('is-active', b.dataset.id === hoverId || b.dataset.id === pinId); });
+    }
+    function setHover(id) { hoverId = id == null ? null : String(id); paint(); }
+
+    function focus(id, flash) {
+      var all = regions(id);
+      var el = all.filter(function (x) { return box(x); })[0];
+      if (!el) { if (all.length) send({ type: 'hidden', id: Number(id) }); return; }
+      setHover(id);
+      var r = el.getBoundingClientRect(), H = innerHeight;
+      if (r.top < 0 || r.bottom > H) {
+        el.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: r.height > H * 0.8 ? 'start' : 'center', inline: 'nearest' });
+      }
+      if (flash) {
+        el.classList.remove('vibe-prd-flash'); void el.offsetWidth; el.classList.add('vibe-prd-flash');
+        var b = badges.get(el);
+        if (b) { b.classList.remove('is-flash'); void b.offsetWidth; b.classList.add('is-flash'); }
+        setTimeout(function () { el.classList.remove('vibe-prd-flash'); if (b) b.classList.remove('is-flash'); }, 1600);
+      }
+      kick(900);
+    }
+
+    function init() {
+      var st = document.createElement('style');
+      st.id = 'vibe-prd-style'; st.textContent = css;
+      (document.head || document.documentElement).appendChild(st);
+      layer = document.createElement('div');
+      layer.id = 'vibe-prd-layer';
+      if (!visible) layer.classList.add('is-off');
+      document.body.appendChild(layer);
+
+      document.addEventListener('mouseover', function (e) {
+        if (layer.contains(e.target)) return;
+        var el = e.target.closest ? e.target.closest('[' + ATTR + ']') : null;
+        var id = el ? idOf(el) : null;
+        if (id === regionId) return;
+        var prev = regionId;
+        regionId = id;
+        clearTimeout(dwellTimer);
+        if (prev != null && hoverId === prev) { setHover(null); send({ type: 'leave', id: Number(prev) }); }
+        if (id != null && visible) {
+          dwellTimer = setTimeout(function () { setHover(id); send({ type: 'hover', id: Number(id), via: 'region' }); }, cfg.dwell || 420);
+        }
+      }, true);
+      document.documentElement.addEventListener('mouseleave', function () {
+        clearTimeout(dwellTimer);
+        if (regionId != null && hoverId === regionId) send({ type: 'leave', id: Number(regionId) });
+        regionId = null; setHover(null);
+      });
+      window.addEventListener('message', function (e) {
+        if (e.source !== parent) return;
+        var m = e.data;
+        if (!m || m.__vibePrd !== 1) return;
+        if (m.type === 'badges') { visible = !!m.visible; layer.classList.toggle('is-off', !visible); if (!visible) setHover(null); kick(60); }
+        else if (m.type === 'pin') { pinId = m.id == null ? null : String(m.id); paint(); }
+        else if (m.type === 'hover') { setHover(m.id); }
+        else if (m.type === 'focus') { focus(String(m.id), m.flash !== false); }
+      });
+      document.addEventListener('scroll', function () { kick(120); }, true);
+      window.addEventListener('resize', function () { kick(250); });
+      ['transitionrun', 'animationstart'].forEach(function (t) { document.addEventListener(t, function () { kick(700); }, true); });
+      new MutationObserver(function (list) {
+        for (var i = 0; i < list.length; i++) { if (!layer.contains(list[i].target)) { kick(500); return; } }
+      }).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+      if (window.ResizeObserver) new ResizeObserver(function () { kick(150); }).observe(document.documentElement);
+      window.addEventListener('load', function () { kick(900); });
+      kick(1200);
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+  }
+
+  /* ---------- viewer ---------- */
+  const D = window.VIBE_PRD;
+  const root = document.documentElement;
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+  const store = {
+    get(k) { try { return localStorage.getItem('vibe-prd:' + k); } catch (e) { return null; } },
+    set(k, v) { try { localStorage.setItem('vibe-prd:' + k, String(v)); } catch (e) { /* storage unavailable */ } }
+  };
+  const media = (q) => (window.matchMedia ? window.matchMedia(q).matches : false);
+  const behavior = media('(prefers-reduced-motion: reduce)') ? 'auto' : 'smooth';
+  const isNarrow = () => media('(max-width: 900px)');
+  const MERMAID_VERSION = '11.16.1';
+  const CATS = ['empty', 'boundary', 'network', 'concurrency', 'permission'];
+  const DEVICE_W = { tablet: 768, mobile: 375 };
+
+  const ICONS = {
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/>',
+    contrast: '<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/>',
+    printer: '<path d="M7 9V3.5h10V9"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M7 14h10v6.5H7z"/>',
+    reload: '<path d="M20.5 12a8.5 8.5 0 1 1-2.5-6"/><path d="M20.5 3.5v5h-5"/>',
+    external: '<path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+    monitor: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+    tablet: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M11 18h2"/>',
+    phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+    locate: '<circle cx="12" cy="12" r="6.5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3"/>',
+    expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
+    code: '<path d="M8.5 7.5 4 12l4.5 4.5M15.5 7.5 20 12l-4.5 4.5"/>',
+    copy: '<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+    close: '<path d="M6 6l12 12M18 6 6 18"/>',
+    plus: '<path d="M12 5v14M5 12h14"/>',
+    minus: '<path d="M5 12h14"/>'
+  };
+  const icon = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n] || ''}</svg>`;
+
+  const I18N = {
+    zh: {
+      badges: '标注红点', badgesTip: '显示/隐藏标注红点（B）', theme: '主题', themeTip: '切换浅色/深色（T）',
+      print: '导出 PDF', printTip: '导出 PDF / 打印：A4 横版，自动展开全部批注',
+      reload: '重新加载原型', openNew: '在新标签页打开原型', desktop: '桌面 100%', tablet: '平板 768px', mobile: '手机 375px',
+      splitter: '拖动调整左右宽度，双击还原', viewProto: '原型', viewDoc: 'PRD', close: '关闭',
+      tabs: { notes: ['页面批注', 'UI Annotations'], arch: ['状态机与架构', 'State & Architecture'], edge: ['异常与埋点', 'Edge Cases & Tracking'] },
+      status: { draft: '草稿 Draft', review: '评审中 In Review', approved: '已定稿 Approved' },
+      regions: '个标注区块', guards: '条 AI 诊断', high: '条高风险',
+      rules: ['业务逻辑与交互规则', 'Interaction rules'], fields: ['字段字典', 'Field specs'], guard: ['AI 诊断补充建议', 'Vibe guardrail warning'],
+      cols: ['字段名', '类型/格式', '来源/计算公式', '必填/默认值'], fix: '建议：', locate: '在原型中定位',
+      level: { high: '高', medium: '中', low: '低' },
+      kind: { state: '状态机', flow: '流程图', er: 'ER 图', sequence: '时序图', other: '图' },
+      zoom: '放大查看', source: '查看源码', copy: '复制', copied: '已复制 Mermaid 源码',
+      mmLoading: '正在加载 Mermaid…', mmOffline: 'Mermaid 没有加载成功（离线或 CDN 不可达），下面先显示源码。联网后刷新即可渲染。', mmError: 'Mermaid 语法错误：',
+      edgeTitle: ['五维异常与边界', 'Edge-case matrix'], trackTitle: ['核心埋点', 'Tracking events'],
+      edgeCols: ['触发条件', '前端 UI/文案表现', '后端/数据兜底策略', '关联'], trackCols: ['event_name', '触发时机', 'properties', '关联'],
+      cats: { empty: '空数据与冷启动', boundary: '边界与溢出', network: '网络与接口', concurrency: '并发与状态冲突', permission: '权限与登录态', other: '其他' },
+      catsAlt: { empty: 'Empty / zero state', boundary: 'Boundary / overflow', network: 'Network / API latency', concurrency: 'Concurrency & state conflict', permission: 'Permission & auth guard', other: 'Other' },
+      missCat: '这一类还没有用例：vibe-prd 要求每类至少 2 条。',
+      issues: '项一致性问题', noBadge: '批注 %s 在原型里找不到 data-prd-badge="%s"', noCard: '原型里的标注 %s 没有对应的批注卡片',
+      orphan: '原型里没有找到这个编号的区块。', hidden: '区块 %s 当前没有显示（例如弹窗或抽屉还没打开），请先在原型里触发它。',
+      noData: '没有读到 window.VIBE_PRD。请检查 DATA 区块的 JS 语法，浏览器控制台里有具体报错。',
+      source: '来源', updated: '更新于', empty: '暂无内容'
+    },
+    en: {
+      badges: 'Badges', badgesTip: 'Show or hide the red badges (B)', theme: 'Theme', themeTip: 'Light or dark (T)',
+      print: 'Export PDF', printTip: 'Export PDF / print: A4 landscape, every annotation expanded',
+      reload: 'Reload prototype', openNew: 'Open the prototype in a new tab', desktop: 'Desktop 100%', tablet: 'Tablet 768px', mobile: 'Mobile 375px',
+      splitter: 'Drag to resize, double-click to reset', viewProto: 'Prototype', viewDoc: 'PRD', close: 'Close',
+      tabs: { notes: ['UI Annotations', ''], arch: ['State & Architecture', ''], edge: ['Edge Cases & Tracking', ''] },
+      status: { draft: 'Draft', review: 'In review', approved: 'Approved' },
+      regions: 'regions', guards: 'AI findings', high: 'high risk',
+      rules: ['Interaction rules', ''], fields: ['Field specs', ''], guard: ['Vibe guardrail warnings', ''],
+      cols: ['Field', 'Type / format', 'Source / formula', 'Required / default'], fix: 'Fix: ', locate: 'Locate in prototype',
+      level: { high: 'High', medium: 'Med', low: 'Low' },
+      kind: { state: 'State', flow: 'Flow', er: 'ER', sequence: 'Sequence', other: 'Diagram' },
+      zoom: 'Zoom', source: 'Mermaid source', copy: 'Copy', copied: 'Mermaid source copied',
+      mmLoading: 'Loading Mermaid…', mmOffline: 'Mermaid could not load (offline or CDN blocked), so the source is shown below. Reload when you are online.', mmError: 'Mermaid syntax error: ',
+      edgeTitle: ['Edge-case matrix', ''], trackTitle: ['Tracking events', ''],
+      edgeCols: ['Trigger', 'Frontend UI & copy', 'Backend / data fallback', 'Refs'], trackCols: ['event_name', 'Trigger', 'properties', 'Refs'],
+      cats: { empty: 'Empty / zero state', boundary: 'Boundary / overflow', network: 'Network / API latency', concurrency: 'Concurrency & state conflict', permission: 'Permission & auth guard', other: 'Other' },
+      catsAlt: {},
+      missCat: 'No cases in this category yet. vibe-prd expects at least 2.',
+      issues: 'issues', noBadge: 'Annotation %s has no data-prd-badge="%s" in the prototype', noCard: 'Badge %s in the prototype has no annotation card',
+      orphan: 'No region with this number exists in the prototype.', hidden: 'Region %s is not on screen (a closed modal or drawer?). Open it in the prototype first.',
+      noData: 'window.VIBE_PRD was not found. Check the JavaScript syntax of the DATA block; the browser console shows the exact error.',
+      source: 'Source', updated: 'Updated', empty: 'Nothing here yet'
+    }
+  };
+
+  const meta = (D && D.meta) || {};
+  const lang = meta.lang === 'en' ? 'en' : 'zh';
+  const T = I18N[lang];
+  const list = (k) => (D && Array.isArray(D[k]) ? D[k] : []);
+  const annotations = list('annotations').slice().sort((a, b) => Number(a.id) - Number(b.id));
+  const diagrams = list('diagrams');
+  const edgeCases = list('edgeCases');
+  const tracking = list('tracking');
+
+  const state = {
+    tab: 'notes', badges: store.get('badges') !== '0', device: store.get('device') || 'desktop',
+    split: parseFloat(store.get('split')) || 58, current: null, pinned: null, ids: null, scroll: {}
+  };
+
+  const app = $('#app'), frame = $('#proto-frame'), device = $('#device'), canvas = $('#canvas');
+  const split = $('#split'), splitter = $('#splitter'), docBody = $('#doc-body'), lightbox = $('#lightbox');
+  const panels = { notes: $('#panel-notes'), arch: $('#panel-arch'), edge: $('#panel-edge') };
+
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const md = (s) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  const fill = (s, ...v) => v.reduce((out, x) => out.replace('%s', x), s);
+  const sub = (pair) => (pair[1] ? ` <small>${pair[1]}</small>` : '');
+  const post = (msg) => { try { frame.contentWindow.postMessage(Object.assign({ __vibePrd: 1 }, msg), '*'); } catch (e) { /* frame not ready */ } };
+  let toastTimer = 0;
+  function toast(text) {
+    const el = $('#toast'); el.textContent = text; el.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  /* ---------- rendering ---------- */
+  function chrome() {
+    root.lang = lang === 'en' ? 'en' : 'zh-CN';
+    document.title = (meta.title || 'PRD') + ' · PRD';
+    $('#doc-title').textContent = meta.title || 'PRD';
+    $('#doc-version').textContent = meta.version || 'v1.0.0';
+    const st = ['draft', 'review', 'approved'].includes(meta.status) ? meta.status : 'review';
+    const chip = $('#doc-status'); chip.dataset.status = st; chip.textContent = T.status[st];
+    $('#addr').textContent = meta.url || meta.source || 'prototype.html';
+    $('#print-meta').textContent = [meta.source && `${T.source}: ${meta.source}`, meta.updated && `${T.updated} ${meta.updated}`].filter(Boolean).join('    ');
+    $$('[data-i18n]').forEach((el) => { el.textContent = T[el.dataset.i18n]; });
+    $$('[data-i18n-title]').forEach((el) => { el.title = T[el.dataset.i18nTitle]; el.setAttribute('aria-label', T[el.dataset.i18nTitle]); });
+    $$('[data-icon]').forEach((el) => el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon)));
+    const counts = { notes: annotations.length, arch: diagrams.length, edge: edgeCases.length + tracking.length };
+    $$('.tab').forEach((b) => { const k = b.dataset.tab; b.innerHTML = `${T.tabs[k][0]}${sub(T.tabs[k])}<span class="count">${counts[k]}</span>`; });
+  }
+  const printHead = (k) => `<h2 class="print-only">${T.tabs[k][0]}${sub(T.tabs[k])}</h2>`;
+
+  function cardHTML(a) {
+    const id = Number(a.id);
+    const formulas = [].concat(a.formula || []).filter(Boolean);
+    const rules = (a.rules || []).length ? `<section class="block"><h4>${T.rules[0]}${sub(T.rules)}</h4><ol class="rules">${a.rules.map((r) => `<li>${md(r)}</li>`).join('')}</ol></section>` : '';
+    const fx = formulas.map((f) => `<div class="formula"><span>${esc(f.label || '')}</span><code>${esc(f.expr || '')}</code></div>`).join('');
+    const fields = (a.fields || []).length ? `<section class="block"><h4>${T.fields[0]}${sub(T.fields)}</h4><div class="tbl-wrap"><table class="t spec"><thead><tr>${T.cols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${a.fields.map((f) => `<tr><td>${md(f.name)}</td><td>${md(f.type)}</td><td>${md(f.source)}</td><td>${md(f.required)}</td></tr>`).join('')}</tbody></table></div></section>` : '';
+    const guards = (a.guardrails || []).length ? `<section class="block"><h4>${T.guard[0]}${sub(T.guard)}<span class="count">${a.guardrails.length}</span></h4><ul class="guards">${a.guardrails.map((g) => { const lv = ['high', 'medium', 'low'].includes(g.level) ? g.level : 'medium'; return `<li class="g"><span class="lvl lvl-${lv}">${T.level[lv]}</span><div><p>${md(g.text)}</p>${g.fix ? `<p class="fix"><b>${T.fix}</b>${md(g.fix)}</p>` : ''}</div></li>`; }).join('')}</ul></section>` : '';
+    return `<article class="card" id="annotation-card-${id}" data-id="${id}" tabindex="0">
+      <header class="card-head" title="${esc(T.locate)}"><span class="num">${id}</span><h3>${esc(a.title)}</h3>${a.type ? `<span class="type">${esc(a.type)}</span>` : ''}<button type="button" class="icon-btn" data-act="locate" data-id="${id}" title="${esc(T.locate)}" aria-label="${esc(T.locate)}">${icon('locate')}</button></header>
+      <div class="card-body">${a.summary ? `<p class="summary">${md(a.summary)}</p>` : ''}<p class="orphan">${T.orphan}</p><div class="col">${rules}${fx}</div><div class="col">${fields}</div>${guards}</div>
+    </article>`;
+  }
+
+  function renderNotes() {
+    if (!D) { panels.notes.innerHTML = `<div class="fatal">${T.noData}</div>`; return; }
+    const g = annotations.flatMap((a) => a.guardrails || []);
+    const high = g.filter((x) => x.level === 'high').length;
+    panels.notes.innerHTML = printHead('notes')
+      + `<div class="overview"><span><b>${annotations.length}</b> ${T.regions}</span><span><b>${g.length}</b> ${T.guards}</span>${high ? `<span class="hi"><b>${high}</b> ${T.high}</span>` : ''}</div>`
+      + `<div class="jump">${annotations.map((a) => `<button type="button" data-jump="${Number(a.id)}"><span class="num">${Number(a.id)}</span><span>${esc(a.title)}</span></button>`).join('')}</div>`
+      + `<div class="cards">${annotations.length ? annotations.map(cardHTML).join('') : `<p class="empty">${T.empty}</p>`}</div>`;
+  }
+
+  const kindOf = (d) => d.kind || (/^\s*stateDiagram/.test(d.code) ? 'state' : /^\s*erDiagram/.test(d.code) ? 'er' : /^\s*sequenceDiagram/.test(d.code) ? 'sequence' : /^\s*(flowchart|graph)/.test(d.code) ? 'flow' : 'other');
+  function renderArch() {
+    panels.arch.innerHTML = printHead('arch') + (diagrams.length ? diagrams.map((d, i) => `
+      <figure class="dg" id="diagram-${i}">
+        <header class="dg-head"><span class="kind">${esc(T.kind[kindOf(d)] || T.kind.other)}</span><h3>${esc(d.title || '')}</h3>
+          <button type="button" class="icon-btn" data-act="zoom" data-i="${i}" title="${T.zoom}" aria-label="${T.zoom}">${icon('expand')}</button>
+          <button type="button" class="icon-btn" data-act="code" data-i="${i}" title="${T.source}" aria-label="${T.source}" aria-expanded="false">${icon('code')}</button></header>
+        <div class="dg-canvas" data-i="${i}"><p class="dg-wait">${T.mmLoading}</p></div>
+        <div class="dg-code" hidden><button type="button" class="btn copy" data-act="copy" data-i="${i}">${icon('copy')}${T.copy}</button><pre>${esc(String(d.code || '').trim())}</pre></div>
+        ${d.note ? `<figcaption class="dg-note">${md(d.note)}</figcaption>` : ''}
+      </figure>`).join('') : `<p class="empty">${T.empty}</p>`);
+  }
+
+  const refs = (r) => `<span class="refs">${[].concat(r || []).map((n) => `<button type="button" class="num" data-ref="${Number(n)}" title="${esc(T.locate)} ${Number(n)}">${Number(n)}</button>`).join('')}</span>`;
+  function renderEdge() {
+    const known = new Set(CATS);
+    const groups = CATS.map((c) => [c, edgeCases.filter((e) => e.category === c)]);
+    const other = edgeCases.filter((e) => !known.has(e.category));
+    if (other.length) groups.push(['other', other]);
+    let rows = '';
+    groups.forEach(([c, items]) => {
+      rows += `<tr class="cat"><td colspan="4"><span class="cat-dot cat-${c}"></span>${esc(T.cats[c])}${T.catsAlt[c] ? `<small>${esc(T.catsAlt[c])}</small>` : ''}<span class="count">${items.length}</span></td></tr>`;
+      if (!items.length) rows += `<tr class="miss"><td colspan="4">${T.missCat}</td></tr>`;
+      items.forEach((e) => { rows += `<tr><td>${md(e.trigger)}</td><td>${md(e.ui)}</td><td>${md(e.fallback)}</td><td>${refs(e.refs)}</td></tr>`; });
+    });
+    const track = tracking.map((t) => `<tr><td>${esc(t.event)}</td><td>${md(t.trigger)}</td><td>${esc(t.properties)}</td><td>${refs(t.refs)}</td></tr>`).join('');
+    panels.edge.innerHTML = printHead('edge')
+      + `<h3 class="sec-title">${T.edgeTitle[0]}${sub(T.edgeTitle)}</h3><div class="tbl-wrap"><table class="t edge"><thead><tr>${T.edgeCols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>`
+      + `<h3 class="sec-title">${T.trackTitle[0]}${sub(T.trackTitle)}</h3>` + (track ? `<div class="tbl-wrap"><table class="t track"><thead><tr>${T.trackCols.map((c) => `<th>${c}</th>`).join('')}</tr></thead><tbody>${track}</tbody></table></div>` : `<p class="empty">${T.empty}</p>`);
+  }
+
+  /* ---------- mermaid (CDN with fallbacks, rendered once per theme) ---------- */
+  const MM_VARS = {
+    light: { darkMode: false, background: '#FFFFFF', primaryColor: '#EFF6FF', primaryBorderColor: '#2563EB', primaryTextColor: '#0F172A', secondaryColor: '#F1F5F9', secondaryBorderColor: '#94A3B8', secondaryTextColor: '#0F172A', tertiaryColor: '#FFFFFF', tertiaryBorderColor: '#CBD5E1', tertiaryTextColor: '#0F172A', lineColor: '#64748B', textColor: '#334155', noteBkgColor: '#FFFBEB', noteBorderColor: '#F59E0B', noteTextColor: '#78350F', edgeLabelBackground: '#FFFFFF', attributeBackgroundColorOdd: '#FFFFFF', attributeBackgroundColorEven: '#F8FAFC' },
+    dark: { darkMode: true, background: '#1E293B', primaryColor: '#1E3A8A', primaryBorderColor: '#60A5FA', primaryTextColor: '#F1F5F9', secondaryColor: '#334155', secondaryBorderColor: '#64748B', secondaryTextColor: '#F1F5F9', tertiaryColor: '#1E293B', tertiaryBorderColor: '#475569', tertiaryTextColor: '#F1F5F9', lineColor: '#94A3B8', textColor: '#E2E8F0', noteBkgColor: '#422006', noteBorderColor: '#F59E0B', noteTextColor: '#FDE68A', edgeLabelBackground: '#1E293B', attributeBackgroundColorOdd: '#1E293B', attributeBackgroundColorEven: '#0F172A' }
+  };
+  function mermaidSources() {
+    const v = MERMAID_VERSION;
+    const urls = [
+      `https://cdn.jsdelivr.net/npm/mermaid@${v}/dist/mermaid.min.js`,
+      `https://unpkg.com/mermaid@${v}/dist/mermaid.min.js`,
+      `https://registry.npmmirror.com/mermaid/${v}/files/dist/mermaid.min.js`
+    ];
+    let tz = '';
+    try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { /* no Intl */ }
+    if (/^zh-(CN|Hans)/i.test(navigator.language || '') || /^Asia\/(Shanghai|Chongqing|Harbin|Urumqi)$/.test(tz)) urls.unshift(urls.pop());
+    return urls;
+  }
+  const loadScript = (src) => new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    const timer = setTimeout(() => { s.remove(); reject(new Error('timeout')); }, 6000);
+    s.src = src; s.async = true;
+    s.onload = () => { clearTimeout(timer); window.mermaid ? resolve() : reject(new Error('no global')); };
+    s.onerror = () => { clearTimeout(timer); s.remove(); reject(new Error('network')); };
+    document.head.appendChild(s);
+  });
+  async function loadMermaid() {
+    if (window.mermaid) return true;
+    for (const src of mermaidSources()) {
+      try { await loadScript(src); return true; } catch (e) { /* try the next CDN */ }
+    }
+    return false;
+  }
+  async function renderDiagrams() {
+    if (!diagrams.length) return;
+    const hosts = $$('.dg-canvas');
+    const ok = await loadMermaid();
+    if (!ok) {
+      hosts.forEach((h) => { h.innerHTML = `<p class="dg-offline">${T.mmOffline}</p>`; h.nextElementSibling.hidden = false; });
+      console.warn('[vibe-prd] Mermaid could not be loaded; showing diagram source instead.');
+      return;
+    }
+    const fontFamily = getComputedStyle(document.body).fontFamily;
+    const failed = new Set();
+    for (const theme of ['light', 'dark']) {
+      window.mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'base', fontFamily, themeVariables: Object.assign({ fontFamily, fontSize: '13px' }, MM_VARS[theme]), flowchart: { curve: 'basis' } });
+      for (let i = 0; i < diagrams.length; i++) {
+        if (failed.has(i)) continue;
+        const id = `vprd-${theme}-${i}-${Date.now().toString(36)}`;
+        try {
+          const out = await window.mermaid.render(id, String(diagrams[i].code || '').trim());
+          hosts[i].insertAdjacentHTML('beforeend', `<div class="svg-${theme}">${out.svg}</div>`);
+        } catch (err) {
+          failed.add(i);
+          const msg = String((err && (err.message || err.str)) || err).split('\n').slice(0, 3).join(' ');
+          hosts[i].insertAdjacentHTML('beforeend', `<div class="dg-error"><b>${T.mmError}</b>${esc(msg)}</div>`);
+          hosts[i].nextElementSibling.hidden = false;
+          console.warn(`[vibe-prd] Mermaid error in "${diagrams[i].title || i}": ${msg}`);
+          ['d' + id, id].forEach((x) => { const n = document.getElementById(x); if (n) n.remove(); });
+        }
+      }
+    }
+    hosts.forEach((h) => { const w = h.querySelector('.dg-wait'); if (w) w.remove(); });
+  }
+
+  /* ---------- prototype frame ---------- */
+  const prototypeHTML = () => { const tpl = $('#vibe-prd-prototype'); return tpl ? tpl.innerHTML.trim() : ''; };
+  function buildFrame() {
+    const runtime = `(${prdRuntime.toString()})(${JSON.stringify({ badges: state.badges, dwell: 420 })});`;
+    frame.srcdoc = `<!DOCTYPE html>\n${prototypeHTML()}\n<script>${runtime}<\/script>\n<!-- vibe-prd ${Date.now()} -->`;
+  }
+  function openPrototype() {
+    const url = URL.createObjectURL(new Blob([`<!DOCTYPE html>\n${prototypeHTML()}`], { type: 'text/html' }));
+    window.open(url, '_blank', 'noopener');
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  }
+  function fitDevice() {
+    const d = isNarrow() ? 'desktop' : state.device;
+    device.dataset.device = d;
+    if (d === 'desktop') { device.style.cssText = ''; return; }
+    const pad = 20, w = DEVICE_W[d];
+    const s = Math.min(1, (canvas.clientWidth - pad * 2) / w);
+    const h = Math.min((canvas.clientHeight - pad * 2) / s, d === 'mobile' ? 812 : 1024);
+    device.style.width = w + 'px';
+    device.style.height = h + 'px';
+    device.style.transform = `scale(${s})`;
+    device.style.left = Math.max(pad, (canvas.clientWidth - w * s) / 2) + 'px';
+    device.style.top = Math.max(pad, (canvas.clientHeight - h * s) / 2) + 'px';
+  }
+
+  /* ---------- state changes ---------- */
+  function setCurrent(id) {
+    state.current = id;
+    $$('.card').forEach((c) => c.classList.toggle('is-current', Number(c.dataset.id) === id));
+    $$('[data-jump]').forEach((b) => b.classList.toggle('is-current', Number(b.dataset.jump) === id));
+  }
+  function switchTab(name) {
+    if (!panels[name] || name === state.tab) return;
+    state.scroll[state.tab] = docBody.scrollTop;
+    state.tab = name;
+    $$('.tab').forEach((b) => { const on = b.dataset.tab === name; b.setAttribute('aria-selected', String(on)); b.tabIndex = on ? 0 : -1; });
+    Object.keys(panels).forEach((k) => { panels[k].hidden = k !== name; });
+    docBody.scrollTop = state.scroll[name] || 0;
+  }
+  function revealCard(id, glow) {
+    setCurrent(id);
+    if (state.tab !== 'notes') switchTab('notes');
+    const card = document.getElementById('annotation-card-' + id);
+    if (!card) return;
+    const pr = docBody.getBoundingClientRect(), cr = card.getBoundingClientRect();
+    if (cr.top < pr.top || cr.bottom > pr.bottom) card.scrollIntoView({ behavior, block: cr.height > pr.height * 0.85 ? 'start' : 'center' });
+    if (glow) { card.classList.remove('is-glow'); void card.offsetWidth; card.classList.add('is-glow'); }
+  }
+  function locate(id, opts = {}) {
+    setCurrent(id);
+    if (opts.pin) { state.pinned = id; post({ type: 'pin', id }); }
+    if (opts.explicit && isNarrow()) setView('proto');
+    post({ type: 'focus', id, flash: true });
+  }
+  function togglePin(id) {
+    state.pinned = state.pinned === id ? null : id;
+    post({ type: 'pin', id: state.pinned });
+    if (state.pinned != null) locate(id);
+  }
+  function setBadges(on) {
+    state.badges = on; store.set('badges', on ? '1' : '0');
+    $('#btn-badges').setAttribute('aria-pressed', String(on));
+    post({ type: 'badges', visible: on });
+  }
+  function setTheme(t) { root.dataset.theme = t; store.set('theme', t); }
+  function setDevice(d) {
+    state.device = DEVICE_W[d] ? d : 'desktop'; store.set('device', state.device);
+    $$('#device-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.device === state.device)));
+    fitDevice();
+  }
+  function setView(v) {
+    app.dataset.view = v;
+    $$('#view-seg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.view === v)));
+  }
+  function setSplit(p, save) {
+    state.split = Math.min(75, Math.max(30, p));
+    split.style.setProperty('--left', state.split + '%');
+    splitter.setAttribute('aria-valuenow', String(Math.round(state.split)));
+    fitDevice();
+    if (save) store.set('split', state.split.toFixed(1));
+  }
+  function validate() {
+    const left = new Set((state.ids || []).map(String));
+    const right = new Set(annotations.map((a) => String(a.id)));
+    const issues = [];
+    left.forEach((id) => { if (!right.has(id)) issues.push(fill(T.noCard, id)); });
+    right.forEach((id) => { if (!left.has(id)) issues.push(fill(T.noBadge, id, id)); });
+    $$('.card').forEach((c) => c.classList.toggle('is-orphan', !left.has(c.dataset.id)));
+    const chip = $('#issues');
+    chip.hidden = !issues.length;
+    chip.lastElementChild.textContent = `${issues.length} ${T.issues}`;
+    chip.title = issues.join('\n');
+    console.info(`[vibe-prd] ${left.size} regions, ${right.size} annotations, ${issues.length} issues`);
+    issues.forEach((i) => console.warn('[vibe-prd] ' + i));
+  }
+
+  /* ---------- lightbox ---------- */
+  let lb = { svg: null, natural: 800, zoom: 1 };
+  function zoomTo(z) {
+    lb.zoom = Math.min(4, Math.max(0.25, z));
+    if (lb.svg) lb.svg.style.width = Math.round(lb.natural * lb.zoom) + 'px';
+    $('#lb-zoom').textContent = Math.round(lb.zoom * 100) + '%';
+  }
+  function openLightbox(i) {
+    const host = $$('.dg-canvas')[i];
+    const svg = host && (host.querySelector(`.svg-${root.dataset.theme === 'dark' ? 'dark' : 'light'} svg`) || host.querySelector('svg'));
+    if (!svg) return;
+    const body = $('#lb-body');
+    body.innerHTML = '';
+    const clone = svg.cloneNode(true);
+    clone.removeAttribute('style'); clone.removeAttribute('width'); clone.removeAttribute('height');
+    const vb = (svg.getAttribute('viewBox') || '').split(/[\s,]+/).map(Number);
+    lb = { svg: clone, natural: vb[2] || svg.getBoundingClientRect().width || 800, zoom: 1 };
+    body.appendChild(clone);
+    $('#lb-title').textContent = diagrams[i].title || '';
+    lightbox.hidden = false;
+    zoomTo(Math.min(2, (body.clientWidth - 56) / lb.natural));
+    $('#lb-close').focus();
+  }
+  function closeLightbox() { lightbox.hidden = true; $('#lb-body').innerHTML = ''; }
+  async function copyCode(i) {
+    const text = String(diagrams[i].code || '').trim();
+    try { await navigator.clipboard.writeText(text); }
+    catch (e) {
+      const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (err) { /* give up quietly */ }
+      ta.remove();
+    }
+    toast(T.copied);
+  }
+
+  /* ---------- events ---------- */
+  let cardTimer = 0, cardHover = null;
+  function bind() {
+    $$('.tab').forEach((b) => b.addEventListener('click', () => switchTab(b.dataset.tab)));
+    $('.tabs').addEventListener('keydown', (e) => {
+      const order = ['notes', 'arch', 'edge'];
+      const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
+      if (!d) return;
+      const next = order[(order.indexOf(state.tab) + d + order.length) % order.length];
+      switchTab(next); $('#tab-' + next).focus();
+    });
+    $('#btn-badges').addEventListener('click', () => setBadges(!state.badges));
+    $('#btn-theme').addEventListener('click', () => setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark'));
+    $('#btn-print').addEventListener('click', () => window.print());
+    $('#btn-reload').addEventListener('click', buildFrame);
+    $('#btn-open').addEventListener('click', openPrototype);
+    $$('#device-seg button').forEach((b) => b.addEventListener('click', () => setDevice(b.dataset.device)));
+    $$('#view-seg button').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+
+    docBody.addEventListener('click', (e) => {
+      const t = e.target;
+      const ref = t.closest('[data-ref]');
+      if (ref) { locate(Number(ref.dataset.ref), { pin: true, explicit: true }); return; }
+      const jump = t.closest('[data-jump]');
+      if (jump) { const id = Number(jump.dataset.jump); revealCard(id, true); locate(id); return; }
+      const act = t.closest('[data-act]');
+      if (act) {
+        const a = act.dataset.act, i = Number(act.dataset.i);
+        if (a === 'locate') locate(Number(act.dataset.id), { pin: true, explicit: true });
+        else if (a === 'zoom') openLightbox(i);
+        else if (a === 'copy') copyCode(i);
+        else if (a === 'code') { const box = act.closest('.dg').querySelector('.dg-code'); box.hidden = !box.hidden; act.setAttribute('aria-expanded', String(!box.hidden)); }
+        return;
+      }
+      const head = t.closest('.card-head');
+      if (head) togglePin(Number(head.closest('.card').dataset.id));
+    });
+    docBody.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && e.target.classList && e.target.classList.contains('card')) locate(Number(e.target.dataset.id), { pin: true, explicit: true });
+    });
+    docBody.addEventListener('mouseover', (e) => {
+      const card = e.target.closest('.card');
+      const id = card ? Number(card.dataset.id) : null;
+      if (id === cardHover) return;
+      clearTimeout(cardTimer);
+      if (cardHover != null) post({ type: 'hover', id: null });
+      cardHover = id;
+      if (id != null && !isNarrow()) cardTimer = setTimeout(() => locate(id), 260);
+    });
+    docBody.addEventListener('mouseleave', () => {
+      clearTimeout(cardTimer);
+      if (cardHover != null) { cardHover = null; post({ type: 'hover', id: null }); }
+    });
+
+    window.addEventListener('message', (e) => {
+      if (e.source !== frame.contentWindow) return;
+      const m = e.data;
+      if (!m || m.__vibePrd !== 1) return;
+      if (m.type === 'ready') {
+        state.ids = m.ids; validate();
+        post({ type: 'badges', visible: state.badges });
+        if (state.pinned != null) post({ type: 'pin', id: state.pinned });
+      } else if (m.type === 'hover') revealCard(m.id, true);
+      else if (m.type === 'click') { revealCard(m.id, true); state.pinned = state.pinned === m.id ? null : m.id; post({ type: 'pin', id: state.pinned }); if (isNarrow()) setView('doc'); }
+      else if (m.type === 'hidden') toast(fill(T.hidden, m.id));
+    });
+
+    splitter.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const rect = split.getBoundingClientRect();
+      app.classList.add('is-dragging');
+      try { splitter.setPointerCapture(e.pointerId); } catch (err) { /* older browsers */ }
+      const move = (ev) => setSplit(((ev.clientX - rect.left) / rect.width) * 100);
+      const up = () => {
+        app.classList.remove('is-dragging');
+        splitter.removeEventListener('pointermove', move);
+        splitter.removeEventListener('pointerup', up);
+        splitter.removeEventListener('pointercancel', up);
+        store.set('split', state.split.toFixed(1));
+      };
+      splitter.addEventListener('pointermove', move);
+      splitter.addEventListener('pointerup', up);
+      splitter.addEventListener('pointercancel', up);
+    });
+    splitter.addEventListener('dblclick', () => setSplit(58, true));
+    splitter.addEventListener('keydown', (e) => {
+      const d = { ArrowLeft: -2, ArrowRight: 2 }[e.key];
+      if (d) { e.preventDefault(); setSplit(state.split + d, true); }
+      else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); setSplit(e.key === 'Home' ? 30 : 75, true); }
+    });
+
+    lightbox.addEventListener('click', (e) => {
+      if (e.target === lightbox || e.target.closest('#lb-close')) closeLightbox();
+      const z = e.target.closest('[data-zoom]');
+      if (z) zoomTo(lb.zoom * (z.dataset.zoom === '1' ? 1.25 : 0.8));
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!lightbox.hidden) closeLightbox();
+        else if (state.pinned != null) { state.pinned = null; post({ type: 'pin', id: null }); }
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey || !lightbox.hidden) return;
+      const tag = (e.target.tagName || '').toLowerCase();
+      if (['input', 'textarea', 'select'].includes(tag) || e.target.isContentEditable) return;
+      const k = e.key.toLowerCase();
+      if (k === 'b') setBadges(!state.badges);
+      else if (k === 't') setTheme(root.dataset.theme === 'dark' ? 'light' : 'dark');
+      else if (k === '1' || k === '2' || k === '3') switchTab(['notes', 'arch', 'edge'][Number(k) - 1]);
+      else if (k === ']' || k === '[') {
+        const ids = annotations.map((a) => Number(a.id));
+        if (!ids.length) return;
+        let i = ids.indexOf(state.current);
+        i = i < 0 ? 0 : (i + (k === ']' ? 1 : -1) + ids.length) % ids.length;
+        revealCard(ids[i], true); locate(ids[i]);
+      }
+    });
+    if (window.ResizeObserver) new ResizeObserver(fitDevice).observe(canvas);
+    else window.addEventListener('resize', fitDevice);
+  }
+
+  /* ---------- boot ---------- */
+  chrome();
+  renderNotes();
+  renderArch();
+  renderEdge();
+  $('#btn-badges').setAttribute('aria-pressed', String(state.badges));
+  setSplit(state.split);
+  setDevice(state.device);
+  setView('proto');
+  bind();
+  buildFrame();
+  renderDiagrams();
+  if (!D) console.error('[vibe-prd] window.VIBE_PRD is missing: check the DATA block.');
+})();
+</script>
+</body>
+</html>
